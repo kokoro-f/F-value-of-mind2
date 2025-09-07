@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     howtoTitle: "名前とルームコードの入力",
     howtoText: "あなたの名前（ニックネーム）とルームコードを入力してください。（任意）",
 
-    fInputTitle: "「ココロカメラ」は、今の心の状態に合わせて円を広げたり縮めたりしてください",
+    fInputTitle: "今の心の状態に合わせて円を広げたり縮めたりしてください",
     fHint1: "F値が小さい=開放的",
     fHint2: "F値が大きい＝集中している",
     decide: "決定",
@@ -539,4 +539,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
