@@ -356,22 +356,21 @@ function displayShutterLabelFromBpm(bpm) {
   return `1/${d}s`;
 }
 
-// 実際の露光（ブレ量）
-function actualExposureSecFromBpm(bpm, sensitivity = 2.4) {
+function actualExposureSecFromBpm(bpm, sensitivity = 3.0) {
   const B = Math.max(1, bpm || 60);
   const B2 = 200;
   const SS2 = 1 / 200;
 
   const kBase = Math.log(200) / Math.log(4); // ≈3.82
-  const k = kBase * sensitivity;
+  const k = kBase * sensitivity;             // 感度↑で差が大きくなる（2.0〜3.5）
 
   const ss = SS2 * Math.pow(B2 / B, k);
-  return Math.max(1/2000, Math.min(2.0, ss));
+  return Math.max(1/2000, Math.min(3.5, ss)); // ← 最大3.5sまで許可
 }
 
 function exposureTimeSec() {
   const bpm = lastMeasuredBpm || defaultBpm;
-  return actualExposureSecFromBpm(bpm, 2.4);
+  return actualExposureSecFromBpm(bpm, 3.5);  // ← まずは3.0。足りなければ 3.2〜3.5 へ
 }
 
 // HUD更新（表示は 1/BPM）
@@ -583,6 +582,7 @@ updateCameraHudBpm();
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
