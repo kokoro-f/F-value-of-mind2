@@ -200,11 +200,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const current = getDistance(e.touches[0], e.touches[1]);
       const delta = current - lastDistance;
       const newSize = Math.max(MIN_SIZE, Math.min(MAX_SIZE, apertureControl.offsetWidth + delta));
-      const newF = sizeToF(newSize);
-      apertureControl.style.width = apertureControl.style.height = `${newSize}px`;
-　　　const roundedF = Math.round(newF);
+　　　const newF = sizeToF(newSize);
+　　　const roundedF = Math.round(newF);   // ← 整数に丸める
+　　　const snappedSize = fToSize(roundedF); // ← その整数に対応する円のサイズに調整
+
+　　　apertureControl.style.width = apertureControl.style.height = `${snappedSize}px`;
 　　　fValueDisplay.textContent = roundedF;
 　　　apertureInput.value = roundedF;
+
 
       lastDistance = current;
     }
@@ -543,6 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
