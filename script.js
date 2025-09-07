@@ -86,17 +86,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const defaultBpm = 60;
 
   // ====== F値 → パラメータ／ぼけ半径 ======
- function fParams(f) {
-  // F=1 → ガンマ 0.2（すごく明るい／白飛び気味）
-  // F=32 → ガンマ 3.0（すごく暗い／露出不足っぽい）
-   const gamma = 0.2 + (f - 1) * (2.8 / 31);
-
-   return { 
-     brightness: gamma,   // ← これをガンマ値として使う
-     contrast: 1.0,       // 必要なら 0.8〜1.2 の範囲で微調整可
-     saturate: 1.0        // 彩度は固定
-   };
- }
+  function fParams(f) {
+    // F=1 → ガンマ 0.2（すごく明るい／白飛び気味）
+    // F=32 → ガンマ 3.0（すごく暗い／露出不足っぽい）
+    const gamma = 0.2 + (f - 1) * (2.8 / 31);
+    return {
+      brightness: gamma,   // brightness をガンマ値として利用
+      contrast: 1.0,
+      saturate: 1.0
+    };
+  }
 
   function fToBlurRadius(f) {
     return Math.max(0, Math.round(18 * (1.2 / f)));
@@ -175,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const apertureControl = document.querySelector('.aperture-control');
   const fValueDisplay   = document.getElementById('f-value-display');
   const apertureInput   = document.getElementById('aperture');
-  const MIN_F = 1.2, MAX_F = 32.0, MIN_SIZE = 100, MAX_SIZE = 250;
+  const MIN_F = 1.0, MAX_F = 32.0, MIN_SIZE = 100, MAX_SIZE = 250;
 
   const fToSize = f => MIN_SIZE + ((MAX_F - f) / (MAX_F - MIN_F)) * (MAX_SIZE - MIN_SIZE);
   const sizeToF = size => MAX_F - ((size - MIN_SIZE) / (MAX_SIZE - MIN_SIZE)) * (MAX_F - MIN_F);
@@ -183,9 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (apertureControl && fValueDisplay && apertureInput) {
     const initialSize = fToSize(selectedFValue);
     apertureControl.style.width = apertureControl.style.height = `${initialSize}px`;
-　　fValueDisplay.textContent = Math.round(selectedFValue);
-　　apertureInput.value = Math.round(selectedFValue);
-
+    fValueDisplay.textContent = Math.round(selectedFValue);
+    apertureInput.value = Math.round(selectedFValue);
   }
 
   let lastDistance = null;
@@ -206,14 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const current = getDistance(e.touches[0], e.touches[1]);
       const delta = current - lastDistance;
       const newSize = Math.max(MIN_SIZE, Math.min(MAX_SIZE, apertureControl.offsetWidth + delta));
-　　　const newF = sizeToF(newSize);
-　　　const roundedF = Math.round(newF);   // ← 整数に丸める
-　　　const snappedSize = fToSize(roundedF); // ← その整数に対応する円のサイズに調整
+      const newF = sizeToF(newSize);
+      const roundedF = Math.round(newF);      // 整数にスナップ
+      const snappedSize = fToSize(roundedF);  // 円サイズもスナップ
 
-　　　apertureControl.style.width = apertureControl.style.height = `${snappedSize}px`;
-　　　fValueDisplay.textContent = roundedF;
-　　　apertureInput.value = roundedF;
-
+      apertureControl.style.width = apertureControl.style.height = `${snappedSize}px`;
+      fValueDisplay.textContent = roundedF;
+      apertureInput.value = roundedF;
 
       lastDistance = current;
     }
@@ -222,10 +219,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // F値決定 → BPM計測へ
   document.getElementById('f-value-decide-btn')?.addEventListener('click', async () => {
-　　const f = Math.round(parseFloat(apertureInput.value));
-　　selectedFValue = f;
-
-    document.querySelector('.aperture-control')?.setAttribute('aria-valuenow', f.toFixed(1));
+    const f = Math.round(parseFloat(apertureInput.value));
+    selectedFValue = f;
+    document.querySelector('.aperture-control')?.setAttribute('aria-valuenow', String(f));
     showScreen('bpm');
     await startBpmCamera();
   });
@@ -325,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(async () => {
           showScreen('camera');
           const fHud = document.getElementById('fvalue-display-camera');
-          if (fHud) fHud.textContent = `F: ${parseFloat(apertureInput.value).toFixed(1)}`;
+          if (fHud) fHud.textContent = `F: ${Math.round(parseFloat(apertureInput.value))}`;
           updateCameraHudBpm();
           await startCamera('environment');
         }, 800);
@@ -346,41 +342,50 @@ document.addEventListener('DOMContentLoaded', () => {
     await startCamera('environment');
   });
 
-// ====== シャッター（BPM→SS + F値焼き込み） ======
-const shutterBtn = document.getElementById('camera-shutter-btn');
-const bpmHud = document.getElementById('bpm-display-camera');
+  // ====== シャッター（BPM→SS + F値焼き込み） ======
+  const shutterBtn = document.getElementById('camera-shutter-btn');
+  const bpmHud = document.getElementById('bpm-display-camera');
 
-// 表示用（HUD）：1/BPM をそのまま
-function displayShutterLabelFromBpm(bpm) {
-  const d = Math.max(1, Math.round(bpm || 60));
-  return `1/${d}s`;
-}
+  // 表示用（HUD）：1/BPM をそのまま
+  function displayShutterLabelFromBpm(bpm) {
+    const d = Math.max(1, Math.round(bpm || 60));
+    return `1/${d}s`;
+  }
 
-function actualExposureSecFromBpm(bpm, sensitivity = 3.0) {
-  const B = Math.max(1, bpm || 60);
-  const B2 = 200;
-  const SS2 = 1 / 200;
+  // 実際の露光（ブレ量）：BPM=50→1s, BPM=200→1/200s を基準に “過敏” に
+  function actualExposureSecFromBpm(bpm, sensitivity = 3.0) {
+    const B = Math.max(1, bpm || 60);
+    const B2 = 200;
+    const SS2 = 1 / 200;
 
-  const kBase = Math.log(200) / Math.log(4); // ≈3.82
-  const k = kBase * sensitivity;             // 感度↑で差が大きくなる（2.0〜3.5）
+    const kBase = Math.log(200) / Math.log(4); // ≈3.82
+    const k = kBase * sensitivity;             // 感度↑で差が大きくなる（2.0〜3.5）
 
-  const ss = SS2 * Math.pow(B2 / B, k);
-  return Math.max(1/2000, Math.min(3.5, ss)); // ← 最大3.5sまで許可
-}
+    const ss = SS2 * Math.pow(B2 / B, k);
+    return Math.max(1/2000, Math.min(3.5, ss)); // 最大3.5sまで許可
+  }
 
-function exposureTimeSec() {
-  const bpm = lastMeasuredBpm || defaultBpm;
-  return actualExposureSecFromBpm(bpm, 3.5);  // ← まずは3.0。足りなければ 3.2〜3.5 へ
-}
+  function exposureTimeSec() {
+    const bpm = lastMeasuredBpm || defaultBpm;
+    return actualExposureSecFromBpm(bpm, 3.5);  // 強めにブレを出す
+  }
 
-// HUD更新（表示は 1/BPM）
-function updateCameraHudBpm() {
-  const bpm = lastMeasuredBpm || defaultBpm;
-  const label = displayShutterLabelFromBpm(bpm);
-  bpmHud.textContent = `BPM: ${bpm || '--'} / SS: ${label}`;
-}
-updateCameraHudBpm();
+  // HUD更新（表示は 1/BPM）
+  function updateCameraHudBpm() {
+    const bpm = lastMeasuredBpm || defaultBpm;
+    const label = displayShutterLabelFromBpm(bpm);
+    bpmHud.textContent = `BPM: ${bpm || '--'} / SS: ${label}`;
+  }
+  updateCameraHudBpm();
 
+  // 残像の消え方（フェード）をBPMで変える：低BPM→残像長い / 高BPM→短い
+  function trailFadeFromBpm(bpm) {
+    const B = Math.max(1, bpm || 60);
+    // 60..200 を 0..1 に正規化して、0.06 → 0.20 へ遷移（クランプ 0.04..0.24）
+    const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+    const t = clamp((B - 60) / (200 - 60), 0, 1);
+    return clamp(0.06 + (0.20 - 0.06) * t, 0.04, 0.24);
+  }
 
   const sleep = ms => new Promise(res => setTimeout(res, ms));
 
@@ -418,26 +423,30 @@ updateCameraHudBpm();
       captureCanvas.height = Math.round(video.videoHeight * scale);
       const ctx = captureCanvas.getContext('2d', { willReadFrequently: true });
 
-      // ① 露光シミュレーション（BPM＝SS）
+      // ① 露光シミュレーション（ブレのみ・光の積算なし：残像方式＋微ブラー）
       const sec = exposureTimeSec();
-      const frameRate = 30;
+      const frameRate = 40; // 30→40にアップ（サンプル密度↑）
       const frameCount = Math.max(1, Math.round(sec * frameRate));
-      const fade = 0.2; // 残像の強さ（0.1〜0.3で調整）
+
+      // 残像の消え方（BPMに応じて変化）：低BPMほど長く残す
+      const fade = trailFadeFromBpm(lastMeasuredBpm || defaultBpm); // 例: 0.06〜0.20
 
       ctx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
       for (let i = 0; i < frameCount; i++) {
-  // 残像をゆっくり消す
+        // 前フレームを少しだけ暗くして残像を伸ばす（光は積算しない）
+        ctx.globalAlpha = 1;
         ctx.fillStyle = `rgba(0,0,0,${fade})`;
         ctx.fillRect(0, 0, captureCanvas.width, captureCanvas.height);
 
-  // 新しいフレームを描画
+        // “なめらかブレ”のための軽いブラー（軌跡をぬるっと繋ぐ）
+        ctx.filter = 'blur(0.6px)';   // 0.4〜1.0px 好みで
         ctx.globalAlpha = 1;
         ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+        ctx.filter = 'none';
 
         await sleep(1000 / frameRate);
       }
       ctx.globalAlpha = 1;
-
 
       // ② F値の明暗/コントラスト/彩度
       applyFValuePixels(ctx, captureCanvas.width, captureCanvas.height, selectedFValue);
@@ -501,13 +510,12 @@ updateCameraHudBpm();
     const id = ctx.getImageData(0, 0, w, h);
     const data = id.data;
     const adj = (v) => {
-     const gamma = brightness; // brightness をガンマ値として利用
-     let x = 255 * Math.pow(v / 255, gamma);
-
-     x = ((x - 128) * contrast) + 128; // コントラスト適用
-     return x < 0 ? 0 : x > 255 ? 255 : x;
+      const gamma = brightness; // brightness をガンマ値として利用
+      let x = 255 * Math.pow(v / 255, gamma);
+      x = ((x - 128) * contrast) + 128; // コントラスト適用
+      return x < 0 ? 0 : x > 255 ? 255 : x;
     };
-    
+
     for (let i = 0; i < data.length; i += 4) {
       let r = adj(data[i]), g = adj(data[i+1]), b = adj(data[i+2]);
       const avg = (r + g + b) / 3;
@@ -582,18 +590,3 @@ updateCameraHudBpm();
   // ====== 初期表示 ======
   showScreen('initial');
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
