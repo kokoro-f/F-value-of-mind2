@@ -94,9 +94,9 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 }
 
 /* BPM計測 */
-#screen-bpm { background: #111; color: #eee; }
-#screen-bpm h2 { color: #fff; }
-.bpm-instruction { color: #ddd; }
+#screen-bpm { background: #fff; color: #222; }
+#screen-bpm h2 { color: #000; }
+.bpm-instruction { color: #444; }
 #bpm-video {
   width: 80%; max-width: 320px; aspect-ratio: 4/3; background: #000;
   border-radius: 12px; margin: 12px 0;
@@ -232,3 +232,4 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   background: #2eaadc;
   color: #fff;
 }
+
