@@ -86,15 +86,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const defaultBpm = 60;
 
   // ====== F値 → パラメータ／ぼけ半径 ======
-　function fParams(f) {
-  　// F=1 で brightness = 1.5（かなり明るい）
-  　// F=32 で brightness ≈ 0.7（暗め）
-　  const brightness = 10.0- (f - 1) * (0.0001 / 31);
+ function fParams(f) {
+  // F=1 → ガンマ 0.2（すごく明るい／白飛び気味）
+  // F=32 → ガンマ 3.0（すごく暗い／露出不足っぽい）
+   const gamma = 0.2 + (f - 1) * (2.8 / 31);
 
-  　return { 
-  　  brightness: brightness, 
-   　 contrast: 1.0,   // 固定
-   　 saturate: 1.0    // 固定
+   return { 
+     brightness: gamma,   // ← これをガンマ値として使う
+     contrast: 1.0,       // 必要なら 0.8〜1.2 の範囲で微調整可
+     saturate: 1.0        // 彩度は固定
    };
  }
 
@@ -554,6 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
