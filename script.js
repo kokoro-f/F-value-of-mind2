@@ -474,7 +474,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const id = ctx.getImageData(0, 0, w, h);
     const data = id.data;
     const adj = (v) => {
-     let x = 255 * Math.pow(v / 255, brightness);
+     const gamma = brightness; // brightness をガンマ値として利用
+     let x = 255 * Math.pow(v / 255, gamma);
 
      x = ((x - 128) * contrast) + 128; // コントラスト適用
      return x < 0 ? 0 : x > 255 ? 255 : x;
@@ -554,6 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
