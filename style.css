@@ -119,22 +119,29 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 #bpm-status { color: #444; margin: 6px 0 12px; }
 
 /* ボタン：計測開始をど真ん中、スキップは右隣 */
-.bpm-actions{
-  display: grid;
-  grid-template-columns: 1fr auto auto 1fr; /* 左右余白 + 中央2カラム */
+.bpm-actions {
+  position: relative;        /* 子要素を絶対配置できるように */
+  width: 100%;
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;   /* 中央に基準線を置く */
   align-items: center;
-  column-gap: 12px;
-  margin-top: 16px;
 }
-#bpm-start-btn{
-  grid-column: 2;
-  justify-self: center;
+
+/* 計測開始は常に中央 */
+#bpm-start-btn {
+  margin: 0 auto;
+  z-index: 1; /* スキップより優先して中央に表示 */
 }
-#bpm-skip-btn{
-  grid-column: 3;
-  justify-self: start;
-  padding: 10px 16px;          /* 少し控えめ */
+
+/* スキップは左寄せに配置 */
+#bpm-skip-btn {
+  position: absolute;
+  left: 16px;        /* 画面の左端から16px */
+  top: 50%;          /* 親（.bpm-actions）の高さ中央 */
+  transform: translateY(-50%);
   font-size: 14px;
+  padding: 8px 14px; /* 少し控えめな大きさ */
 }
 
 /* カメラ画面 */
@@ -238,3 +245,4 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 .cc-btn { padding: 6px 10px; border-radius: 6px; border: none; cursor: pointer; }
 .cc-btn--light { background: #fff; color: #000; }
 .cc-btn { background: #2eaadc; color: #fff; }
+
