@@ -65,13 +65,14 @@
       <p class="bpm-instruction" data-i18n-html="bpmPrep_html">
         カメラに<strong>指先を軽く当てて</strong>ください。赤みの変化から心拍数を推定します（約15秒）。
       </p>
+    <div class="bpm-video-wrapper">
       <video id="bpm-video" autoplay playsinline muted></video>
-      <canvas id="bpm-canvas" style="display:none;"></canvas>
-      <p id="bpm-status" data-i18n="bpmReady">準備ができたら「計測開始」を押してください。</p>
-      <div class="bpm-actions">
-        <button id="bpm-start-btn" data-i18n="bpmStart">計測開始</button>
-        <button id="bpm-skip-btn" class="secondary" data-i18n="skip">スキップ</button>
-      </div>
+    </div>
+    <canvas id="bpm-canvas" style="display:none;"></canvas>
+    <p id="bpm-status" data-i18n="bpmReady">準備ができたら「計測開始」を押してください。</p>
+    <div class="bpm-actions">
+      <button id="bpm-start-btn" data-i18n="bpmStart">計測開始</button>
+      <button id="bpm-skip-btn" class="secondary" data-i18n="skip">スキップ</button>
     </div>
 
     <!-- 画面５：カメラ -->
@@ -107,5 +108,6 @@
 </div>
 
 </html>
+
 
 
