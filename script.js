@@ -86,12 +86,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const defaultBpm = 60;
 
   // ====== F値 → パラメータ／ぼけ半径 ======
-  function fParams(f) {
-    const brightness = Math.max(0.7, Math.min(1.5, 2.5 / f));
-    const saturate   = Math.max(0.5, Math.min(2.0, 2.0 - f / 32));
-    const contrast   = Math.max(0.8, Math.min(1.3, 1.0 + (8 / f) * 0.05));
-    return { brightness, contrast, saturate };
-  }
+　function fParams(f) {
+  　// F=1 で brightness = 1.5（かなり明るい）
+  　// F=32 で brightness ≈ 0.7（暗め）
+　  const brightness = 1.5 - (f - 1) * (0.8 / 31);
+
+  　return { 
+  　  brightness: brightness, 
+   　 contrast: 1.0,   // 固定
+   　 saturate: 1.0    // 固定
+   };
+ }
+
   function fToBlurRadius(f) {
     return Math.max(0, Math.round(18 * (1.2 / f)));
   }
@@ -546,6 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
