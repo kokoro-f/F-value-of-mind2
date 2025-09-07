@@ -427,14 +427,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const sec = exposureTimeSec();
       const frameRate = 30;
       const frameCount = Math.max(1, Math.round(sec * frameRate));
+      const fade = 0.2; // 残像の強さ（0.1〜0.3で調整）
 
-      ctx.clearRect(0, 0, captureCanvas.width, captureCanvas.height); 
+      ctx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
       for (let i = 0; i < frameCount; i++) {
-      ctx.globalAlpha = 1;   // ← そのまま描画
-      ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-      await sleep(1000 / frameRate);
-    }
-    ctx.globalAlpha = 1;
+  // 残像をゆっくり消す
+        ctx.fillStyle = `rgba(0,0,0,${fade})`;
+        ctx.fillRect(0, 0, captureCanvas.width, captureCanvas.height);
+
+  // 新しいフレームを描画
+        ctx.globalAlpha = 1;
+        ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+
+        await sleep(1000 / frameRate);
+      }
+      ctx.globalAlpha = 1;
+
 
       // ② F値の明暗/コントラスト/彩度
       applyFValuePixels(ctx, captureCanvas.width, captureCanvas.height, selectedFValue);
@@ -579,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
