@@ -177,8 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (apertureControl && fValueDisplay && apertureInput) {
     const initialSize = fToSize(selectedFValue);
     apertureControl.style.width = apertureControl.style.height = `${initialSize}px`;
-    fValueDisplay.textContent = selectedFValue.toFixed(1);
-    apertureInput.value = selectedFValue.toFixed(1);
+　　fValueDisplay.textContent = Math.round(selectedFValue);
+　　apertureInput.value = Math.round(selectedFValue);
+
   }
 
   let lastDistance = null;
@@ -201,8 +202,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const newSize = Math.max(MIN_SIZE, Math.min(MAX_SIZE, apertureControl.offsetWidth + delta));
       const newF = sizeToF(newSize);
       apertureControl.style.width = apertureControl.style.height = `${newSize}px`;
-      fValueDisplay.textContent = newF.toFixed(1);
-      apertureInput.value = newF.toFixed(1);
+　　　const roundedF = Math.round(newF);
+　　　fValueDisplay.textContent = roundedF;
+　　　apertureInput.value = roundedF;
+
       lastDistance = current;
     }
   }, { passive: false });
@@ -210,8 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // F値決定 → BPM計測へ
   document.getElementById('f-value-decide-btn')?.addEventListener('click', async () => {
-    const f = parseFloat(apertureInput.value);
-    selectedFValue = f;
+　　const f = Math.round(parseFloat(apertureInput.value));
+　　selectedFValue = f;
+
     document.querySelector('.aperture-control')?.setAttribute('aria-valuenow', f.toFixed(1));
     showScreen('bpm');
     await startBpmCamera();
@@ -539,5 +543,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
