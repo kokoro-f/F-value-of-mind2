@@ -97,17 +97,31 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 #screen-bpm { background: #fff; color: #222; }
 #screen-bpm h2 { color: #000; }
 .bpm-instruction { color: #444; }
-/* video 自体はシンプルに映像だけ */
+
+/* ラッパーに枠をつける */
+.bpm-video-wrapper {
+  width: 80%;
+  max-width: 320px;
+  aspect-ratio: 4/3;
+  border: 4px solid #D30000;   /* 赤枠 */
+  border-radius: 12px;         /* 角丸 */
+  margin: 12px 0;
+  background: #fff;            /* 背景は白 */
+  overflow: hidden;            /* videoがはみ出さないように */
+}
+
+/* video自体は枠なし */
 #bpm-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
-  border: none;         /* ← 内側の枠を消す */
-  border-radius: 0;     /* ← 内側の角丸も消す */
-  background: none;     /* ← 内側の背景を消す */
-  margin: 0;            /* ← 余白も消す */
+  border: none;
+  border-radius: 0;
+  background: none;
+  margin: 0;
 }
+
 #bpm-status { color: #ccc; margin: 6px 0 12px; }
 .bpm-actions { display: flex; gap: 12px; }
 
@@ -238,24 +252,4 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 .cc-btn {
   background: #2eaadc;
   color: #fff;
-}
-
-/* ラッパーに枠をつける */
-.bpm-video-wrapper {
-  width: 80%;
-  max-width: 320px;
-  aspect-ratio: 4/3;
-  border: 4px solid #D30000;   /* 赤枠 */
-  border-radius: 12px;         /* 角丸 */
-  margin: 12px 0;
-  background: #fff;            /* 背景は白 */
-  overflow: hidden;            /* videoがはみ出さないように */
-}
-
-/* video自体は枠なし */
-#bpm-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
