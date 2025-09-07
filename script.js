@@ -346,46 +346,42 @@ document.addEventListener('DOMContentLoaded', () => {
     await startCamera('environment');
   });
 
- const shutterBtn = document.getElementById('camera-shutter-btn');
- const bpmHud = document.getElementById('bpm-display-camera');
+// ====== シャッター（BPM→SS + F値焼き込み） ======
+const shutterBtn = document.getElementById('camera-shutter-btn');
+const bpmHud = document.getElementById('bpm-display-camera');
 
- // 表示用（HUDに出す値）
- function displayShutterLabelFromBpm(bpm) {
-   const d = Math.max(1, Math.round(bpm || 60)); // 0回避
-   return `1/${d}s`;
- }
-
-// 実際の露光時間マッピング
-// BPM=50 → 1秒, BPM=200 → 1/200秒
- function actualExposureSecFromBpm(bpm) {
-   const B = Math.max(1, bpm || 60);
-   const B1 = 50;     // 1秒にしたいBPM
-   const B2 = 200;    // 1/200秒にしたいBPM
-   const SS2 = 1/200;
-
-  // 4^k = 200 → k ≈ 3.82
-   const k = Math.log(200) / Math.log(4);
-
-  // 実露光式
-   const ss = SS2 * Math.pow(B2 / B, k);
-
-  // 安全クランプ
-   return Math.max(1/2000, Math.min(2.0, ss));
+// 表示用（HUD）：1/BPM をそのまま
+function displayShutterLabelFromBpm(bpm) {
+  const d = Math.max(1, Math.round(bpm || 60));
+  return `1/${d}s`;
 }
 
-// 実際に使う露光秒（シャッター処理で利用）
- function exposureTimeSec() {
-   const bpm = lastMeasuredBpm || defaultBpm;
-   return actualExposureSecFromBpm(bpm);
- }
+// 実際の露光（ブレ量）
+function actualExposureSecFromBpm(bpm, sensitivity = 2.4) {
+  const B = Math.max(1, bpm || 60);
+  const B2 = 200;
+  const SS2 = 1 / 200;
 
-// HUD更新（表示は1/BPM）
- function updateCameraHudBpm() {
-   const bpm = lastMeasuredBpm || defaultBpm;
-   const label = displayShutterLabelFromBpm(bpm);
-   bpmHud.textContent = `BPM: ${bpm || '--'} / SS: ${label}`;
- }
- updateCameraHudBpm();
+  const kBase = Math.log(200) / Math.log(4); // ≈3.82
+  const k = kBase * sensitivity;
+
+  const ss = SS2 * Math.pow(B2 / B, k);
+  return Math.max(1/2000, Math.min(2.0, ss));
+}
+
+function exposureTimeSec() {
+  const bpm = lastMeasuredBpm || defaultBpm;
+  return actualExposureSecFromBpm(bpm, 2.4);
+}
+
+// HUD更新（表示は 1/BPM）
+function updateCameraHudBpm() {
+  const bpm = lastMeasuredBpm || defaultBpm;
+  const label = displayShutterLabelFromBpm(bpm);
+  bpmHud.textContent = `BPM: ${bpm || '--'} / SS: ${label}`;
+}
+updateCameraHudBpm();
+
 
   const sleep = ms => new Promise(res => setTimeout(res, ms));
 
@@ -587,6 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
