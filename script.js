@@ -25,14 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
     howtoTitle: "名前とルームコードの入力",
     howtoText: "あなたの名前（ニックネーム）とルームコードを入力してください。（任意）",
 
-    fInputTitle: "「ココロカメラ」は、今の心の状態を写真に映し出します。まずは今の心の状態に近い「絞り値(F値)」を選んでください。",
-    fHint1: "F値が小さいほど「開放的」に、",
-    fHint2: "大きいほど「集中している」状態を表します。",
+    fInputTitle: "「ココロカメラ」は、今の心の状態に合わせて円を広げたり縮めたりしてください",
+    fHint1: "F値が小さい=開放的",
+    fHint2: "F値が大きい＝集中している",
     decide: "決定",
 
-    bpmTitle: "こころの動きの計測",
-    bpmPrep_html: 'カメラに<strong>指先を軽く当てて</strong>ください。赤みの変化から心拍数を推定します。（約15秒）',
-    bpmReady: "準備ができたら「計測開始」を押してください。",
+    bpmTitle: "ココロのシャッタースピード",
+    bpmPrep_html: 'カメラに<strong>指先を軽く当てて</strong>ください赤みの変化から心拍数を測定します',
+    bpmReady: "準備ができたら計測開始を押してください",
     bpmStart: "計測開始",
     skip: "スキップ",
 
@@ -539,3 +539,4 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
