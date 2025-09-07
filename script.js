@@ -474,10 +474,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const id = ctx.getImageData(0, 0, w, h);
     const data = id.data;
     const adj = (v) => {
-      let x = v * brightness;
-      x = ((x - 128) * contrast) + 128;
-      return x < 0 ? 0 : x > 255 ? 255 : x;
+     let x = 255 * Math.pow(v / 255, brightness);
+
+     x = ((x - 128) * contrast) + 128; // コントラスト適用
+     return x < 0 ? 0 : x > 255 ? 255 : x;
     };
+    
     for (let i = 0; i < data.length; i += 4) {
       let r = adj(data[i]), g = adj(data[i+1]), b = adj(data[i+2]);
       const avg = (r + g + b) / 3;
@@ -552,6 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
