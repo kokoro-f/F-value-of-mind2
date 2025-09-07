@@ -103,6 +103,10 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   height: 100%;
   object-fit: cover;
   display: block;
+  border: none;         /* ← 内側の枠を消す */
+  border-radius: 0;     /* ← 内側の角丸も消す */
+  background: none;     /* ← 内側の背景を消す */
+  margin: 0;            /* ← 余白も消す */
 }
 #bpm-status { color: #ccc; margin: 6px 0 12px; }
 .bpm-actions { display: flex; gap: 12px; }
@@ -255,4 +259,5 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   object-fit: cover;
   display: block;
 }
+
 
