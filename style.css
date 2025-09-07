@@ -133,10 +133,10 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   z-index: 1;
 }
 
-/* スキップボタン → 画面左端に固定 */
+/* スキップボタン → 画面右端に固定 */
 #bpm-skip-btn {
   position: absolute;
-  left: 0;            /* 画面の左端に */
+  right: 0;           /* 画面の右端に */
   top: 50%;           /* 親の中央高さ */
   transform: translateY(-50%);
   font-size: 14px;
@@ -244,5 +244,6 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 .cc-btn { padding: 6px 10px; border-radius: 6px; border: none; cursor: pointer; }
 .cc-btn--light { background: #fff; color: #000; }
 .cc-btn { background: #2eaadc; color: #fff; }
+
 
 
