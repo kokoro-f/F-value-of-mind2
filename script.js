@@ -346,21 +346,46 @@ document.addEventListener('DOMContentLoaded', () => {
     await startCamera('environment');
   });
 
-  // ====== シャッター（BPM→SS + F値焼き込み） ======
-  const shutterBtn = document.getElementById('camera-shutter-btn');
-  const bpmHud = document.getElementById('bpm-display-camera');
+ const shutterBtn = document.getElementById('camera-shutter-btn');
+ const bpmHud = document.getElementById('bpm-display-camera');
 
-  // 実BPMをシャッタースピードに直に反映：SS(秒) = 60 / BPM（0.1〜2.0にクランプ）
-  function exposureTimeSec() {
-    const bpm = lastMeasuredBpm || defaultBpm;
-    return Math.min(2.0, Math.max(0.1, 60 / bpm));
-  }
-  function exposureLabel(sec) { return sec >= 1 ? `${sec.toFixed(1)}s` : `1/${Math.round(1/sec)}s`; }
-  function updateCameraHudBpm() {
-    const sec = exposureTimeSec();
-    bpmHud.textContent = `BPM: ${lastMeasuredBpm || '--'} / SS: ${exposureLabel(sec)}`;
-  }
-  updateCameraHudBpm();
+ // 表示用（HUDに出す値）
+ function displayShutterLabelFromBpm(bpm) {
+   const d = Math.max(1, Math.round(bpm || 60)); // 0回避
+   return `1/${d}s`;
+ }
+
+// 実際の露光時間マッピング
+// BPM=50 → 1秒, BPM=200 → 1/200秒
+ function actualExposureSecFromBpm(bpm) {
+   const B = Math.max(1, bpm || 60);
+   const B1 = 50;     // 1秒にしたいBPM
+   const B2 = 200;    // 1/200秒にしたいBPM
+   const SS2 = 1/200;
+
+  // 4^k = 200 → k ≈ 3.82
+   const k = Math.log(200) / Math.log(4);
+
+  // 実露光式
+   const ss = SS2 * Math.pow(B2 / B, k);
+
+  // 安全クランプ
+   return Math.max(1/2000, Math.min(2.0, ss));
+}
+
+// 実際に使う露光秒（シャッター処理で利用）
+ function exposureTimeSec() {
+   const bpm = lastMeasuredBpm || defaultBpm;
+   return actualExposureSecFromBpm(bpm);
+ }
+
+// HUD更新（表示は1/BPM）
+ function updateCameraHudBpm() {
+   const bpm = lastMeasuredBpm || defaultBpm;
+   const label = displayShutterLabelFromBpm(bpm);
+   bpmHud.textContent = `BPM: ${bpm || '--'} / SS: ${label}`;
+ }
+ updateCameraHudBpm();
 
   const sleep = ms => new Promise(res => setTimeout(res, ms));
 
@@ -555,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
