@@ -64,18 +64,32 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 .description-text-container { display: flex; flex-direction: column; align-items: center; padding-bottom: 12px; gap: 8px; }
 .f-value-title { font-size: 1.1rem; font-weight: 600; color: #555; }
 
-.aperture-control { position: relative; width: 200px; height: 200px; transition: all .18s ease; }
-.aperture-ring {
-  width: 100%; height: 100%; border-radius: 50%; border: 4px solid #ccc; background: #f0f0f0;
-  box-shadow:
-    inset 0 0 10px rgba(0,0,0,0.1),
-    0 5px 15px rgba(0,0,0,0.18),
-    0 0 0 4px rgba(255,255,255,0.5),
-    0 0 0 8px rgba(0,0,0,0.05);
+.aperture-control {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  transition: all .18s ease;
 }
+
+.aperture-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 4px solid #2A9858;      /* 枠線を指定の緑に */
+  background: #2A9858;            /* 塗りつぶしも緑に */
+  box-shadow:
+    inset 0 0 10px rgba(0,0,0,0.25),
+    0 5px 15px rgba(0,0,0,0.25);
+}
+
 .aperture-value {
-  position: absolute; inset: 0; display: grid; place-items: center;
-  font-size: 2.3rem; font-weight: 800; color: #333;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2.3rem;
+  font-weight: 800;
+  color: #fff; /* 緑の上で見やすいように白文字に変更 */
 }
 
 /* BPM計測 */
