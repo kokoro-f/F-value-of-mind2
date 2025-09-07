@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
 　function fParams(f) {
   　// F=1 で brightness = 1.5（かなり明るい）
   　// F=32 で brightness ≈ 0.7（暗め）
-　  const brightness = 1.5 - (f - 1) * (0.8 / 31);
+　  const brightness = 5.0 - (f - 1) * (0.1 / 31);
 
   　return { 
   　  brightness: brightness, 
@@ -552,6 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
