@@ -122,8 +122,26 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   margin: 0;
 }
 
-#bpm-status { color: #ccc; margin: 6px 0 12px; }
-.bpm-actions { display: flex; gap: 12px; }
+#bpm-status {
+  color: #444;
+  margin: 6px 0 12px;
+}
+
+.bpm-actions {
+  display: flex;
+  justify-content: center;   /* 中央寄せ */
+  align-items: center;
+  gap: 16px;                 /* ボタンの間隔 */
+  margin-top: 16px;
+}
+
+#bpm-start-btn {
+  order: 1;                  /* 左に配置（中央基準） */
+}
+
+#bpm-skip-btn {
+  order: 2;                  /* 計測開始の横に配置 */
+}
 
 /* カメラ画面 */
 #screen-camera { background: #000; }
@@ -253,3 +271,4 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   background: #2eaadc;
   color: #fff;
 }
+
