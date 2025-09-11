@@ -123,29 +123,74 @@ function startPreviewLoop() {
 
   function stopPreviewLoop(){ if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
 
-  async function startCamera(facingMode = 'environment') {
-    try {
-      if (currentStream) currentStream.getTracks().forEach(t => t.stop());
-      const constraints = {
-        video: {
-          facingMode: facingMode === 'environment' ? { ideal: 'environment' } : 'user',
-          width: { ideal: 1280 }, height: { ideal: 720 }
-        },
-        audio: false
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      video.srcObject = stream;
-      await video.play();
-      currentStream = stream;
-      isFrontCamera = (facingMode === 'user');
-      // 実videoは非表示。プレビューCanvasに描く
-      video.style.display = 'none';
-      startPreviewLoop();
-    } catch (err) {
-      console.error('カメラエラー:', err);
-      alert(T.cameraError);
+// グローバルで保持
+let deviceIds = { front: null, back: null };
+
+async function refreshDeviceIds() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videos  = devices.filter(d => d.kind === 'videoinput');
+    const isFront = l => /front|user|内|フロント/i.test(l);
+    const isBack  = l => /back|environment|rear|外|アウト/i.test(l);
+    let front=null, back=null;
+    for (const v of videos) {
+      const label = v.label || '';
+      if (!front && isFront(label)) front = v.deviceId;
+      if (!back  && isBack(label))  back  = v.deviceId;
     }
+    if (!front && videos[0]) front = videos[0].deviceId;
+    if (!back  && videos[1]) back  = videos[1].deviceId ?? front;
+    deviceIds.front = front; deviceIds.back = back;
+  } catch(e){ console.warn('enumerateDevices失敗:', e); }
+}
+
+async function startCamera(facing = 'environment') {
+  try {
+    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+
+    await refreshDeviceIds();
+
+    let constraints = {
+      video: {
+        width: { ideal: 1280 }, height: { ideal: 720 },
+        deviceId: (facing === 'user' ? deviceIds.front : deviceIds.back)
+          ? { exact: (facing === 'user' ? deviceIds.front : deviceIds.back) }
+          : undefined
+      },
+      audio: false
+    };
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch {
+      try {
+        constraints = {
+          video: { width:{ideal:1280}, height:{ideal:720}, facingMode:{ exact: (facing==='user'?'user':'environment') } },
+          audio: false
+        };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch {
+        constraints = {
+          video: { width:{ideal:1280}, height:{ideal:720}, facingMode:(facing==='user'?'user':{ideal:'environment'}) },
+          audio: false
+        };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      }
+    }
+
+    video.srcObject = stream;
+    await video.play();
+    currentStream = stream;
+    isFrontCamera = (facing === 'user');
+    video.style.display = 'none';
+    startPreviewLoop();
+  } catch (err) {
+    console.error('カメラエラー:', err);
+    alert(T.cameraError);
   }
+}
 
 // ====== F値→明暗 (強化版 1/f² + 共通フィルタ) ======
 let selectedFValue = 32.0;
@@ -361,6 +406,18 @@ function applyFnumberLight(f){
     await startCamera('environment');
   });
 
+    // ← ここから追加（切り替えボタンのリスナー）
+  const switchBtn = document.getElementById('camera-switch-btn');
+  switchBtn?.addEventListener('click', async () => {
+    try {
+      switchBtn.disabled = true;                 // 連打防止
+      const newMode = isFrontCamera ? 'environment' : 'user';
+      await startCamera(newMode);                // 内⇄外を切り替え
+    } finally {
+      setTimeout(() => { switchBtn.disabled = false; }, 300);
+    }
+  });
+  
   // ====== SS(1/BPM) と HUD ======
   const shutterBtn = document.getElementById('camera-shutter-btn');
   const bpmHud = document.getElementById('bpm-display-camera');
@@ -599,6 +656,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
