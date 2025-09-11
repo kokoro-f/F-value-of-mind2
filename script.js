@@ -53,6 +53,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   applyTexts(T);
 
+  // Canvas2D の filter サポート検出（trueなら ctx.filter が使える）
+const CANVAS_FILTER_SUPPORTED = (() => {
+  try {
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    return ctx && ('filter' in ctx);
+  } catch { return false; }
+})();
+
   // ====== 要素参照 ======
   const video = document.getElementById('video');
   const rawCanvas = document.getElementById('canvas');
@@ -75,30 +84,43 @@ document.addEventListener('DOMContentLoaded', () => {
   let isFrontCamera = false;
   let rafId = null;
 
-  function startPreviewLoop() {
-    if (rafId) cancelAnimationFrame(rafId);
-    const render = (ts) => {
-      if (video.videoWidth && video.videoHeight) {
-        if (previewCanvas.width !== video.videoWidth || previewCanvas.height !== video.videoHeight) {
-          previewCanvas.width  = video.videoWidth;
-          previewCanvas.height = video.videoHeight;
-        }
-        const interval = 1000 / PREVIEW_FPS;
-        if ((ts - lastPreviewTs) >= interval) {
-          lastPreviewTs = ts;
-          previewCtx.save();
-          previewCtx.imageSmoothingEnabled = true;
-          // ★ F値の明暗（1/f²）を filter: brightness で適用（軽い）
-          previewCtx.filter = `brightness(${currentBrightness})`;
-          previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-          previewCtx.drawImage(video, 0, 0, previewCanvas.width, previewCanvas.height);
-          previewCtx.restore();
-        }
+function startPreviewLoop() {
+  if (rafId) cancelAnimationFrame(rafId);
+  const render = (ts) => {
+    if (video.videoWidth && video.videoHeight) {
+      if (previewCanvas.width !== video.videoWidth || previewCanvas.height !== video.videoHeight) {
+        previewCanvas.width  = video.videoWidth;
+        previewCanvas.height = video.videoHeight;
       }
-      rafId = requestAnimationFrame(render);
-    };
+      const interval = 1000 / PREVIEW_FPS;
+      if ((ts - lastPreviewTs) >= interval) {
+        lastPreviewTs = ts;
+
+        previewCtx.save();
+        previewCtx.imageSmoothingEnabled = true;
+
+        // まずは素の絵を描く
+        previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        previewCtx.drawImage(video, 0, 0, previewCanvas.width, previewCanvas.height);
+
+        // ★ Canvas2D.filter 非対応端末では、プレビューも手動合成で明暗を適用
+        if (!CANVAS_FILTER_SUPPORTED) {
+          applyBrightnessComposite(
+            previewCtx,
+            currentBrightness,
+            previewCanvas.width,
+            previewCanvas.height,
+            CONTRAST_GAIN
+          );
+        }
+        previewCtx.restore();
+      }
+    }
     rafId = requestAnimationFrame(render);
-  }
+  };
+  rafId = requestAnimationFrame(render);
+}
+
   function stopPreviewLoop(){ if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
 
   async function startCamera(facingMode = 'environment') {
@@ -129,12 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
 let selectedFValue = 32.0;
 const MIN_F = 1.0, MAX_F = 32.0;
 
-// F=1 でぱっと明るく、F=32 でぐっと暗くなる
-const BRIGHT_MIN = 0.12;
-const BRIGHT_MAX = 3.6;
-const BRIGHT_STRENGTH = 1.35;
-
-const CONTRAST_GAIN = 1.10; // コントラスト少し強調
+const BRIGHT_MIN = 0.12;      // 暗側の下限
+const BRIGHT_MAX = 3.6;       // 明側の上限
+const BRIGHT_STRENGTH = 1.35; // カーブ強調（↑で暗側がより暗く）
+const CONTRAST_GAIN = 1.10;   // ほんの少しコントラスト
 
 let currentBrightness = 1.0;
 
@@ -147,16 +167,22 @@ function brightnessFromF(f){
   return Math.exp( lnMax + (lnMin - lnMax) * t2 );
 }
 
-// ★ プレビュー/保存 共通のフィルタ文字列を生成
+// プレビュー/保存 共通：同じフィルタ文字列を返す
 function buildFilterString(){
   return `brightness(${currentBrightness}) contrast(${CONTRAST_GAIN})`;
 }
 
-// F値変更時に呼ぶ
+// F値変更時：プレビューに反映
 function applyFnumberLight(f){
   currentBrightness = brightnessFromF(f);
   if (previewCanvas) {
-    previewCanvas.style.filter = buildFilterString(); // プレビュー反映
+    if (CANVAS_FILTER_SUPPORTED) {
+      // 対応端末：CSSフィルタで軽く＆見やすく
+      previewCanvas.style.filter = buildFilterString();
+    } else {
+      // 未対応端末：CSSフィルタは外し、描画側で合成（後述）に任せる
+      previewCanvas.style.filter = 'none';
+    }
   }
 }
 
@@ -397,21 +423,35 @@ function applyFnumberLight(f){
       const frameCount = Math.max(1, Math.round(sec * frameRate));
       const fade = trailFadeFromBpm(lastMeasuredBpm || defaultBpm);
 
-      ctx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
-      for (let i = 0; i < frameCount; i++) {
-        // 残像フェード
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = `rgba(0,0,0,${fade})`;
-        ctx.fillRect(0, 0, captureCanvas.width, captureCanvas.height);
+ctx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+for (let i = 0; i < frameCount; i++) {
+  // 残像フェード
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = `rgba(0,0,0,${fade})`;
+  ctx.fillRect(0, 0, captureCanvas.width, captureCanvas.height);
 
-        // ★ 明暗をfilterで焼き込み（必要なら ' blur(0.6px)' を後ろに加える）
-        ctx.filter = `brightness(${currentBrightness})`;
-        ctx.globalAlpha = 1;
-        ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-        ctx.filter = 'none';
-
-        await sleep(1000 / frameRate);
-      }
+  // ★ 端末対応で分岐：見た目＝保存を一致させる
+  if (CANVAS_FILTER_SUPPORTED) {
+    // Canvas2D.filter 対応端末：同じフィルタ文字列をそのまま焼き込む
+    ctx.filter = buildFilterString(); // 例: brightness(...) contrast(...)
+    ctx.globalAlpha = 1;
+    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+    ctx.filter = 'none';
+  } else {
+    // 非対応端末：まず素で描いてから手動合成で明暗/コントラストを適用
+    ctx.globalAlpha = 1;
+    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+    applyBrightnessComposite(
+      ctx,
+      currentBrightness,
+      captureCanvas.width,
+      captureCanvas.height,
+      CONTRAST_GAIN
+    );
+  }
+  
+  await sleep(1000 / frameRate);
+}
       ctx.globalAlpha = 1;
 
       // 共有・保存
@@ -513,8 +553,52 @@ function applyFnumberLight(f){
     };
   }
 
+  // ====== 手動合成（filter非対応端末向け）：明るさ＆コントラスト近似 ======
+function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
+  // 明るさ：b<1 は黒で multiply、b>1 は白で screen
+  if (brightness < 1) {
+    const a = Math.max(0, Math.min(1, 1 - brightness));
+    if (a > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+  } else if (brightness > 1) {
+    const a = Math.max(0, Math.min(1, 1 - (1/brightness)));
+    if (a > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+  }
+
+  // コントラスト：overlay 相当を薄く（過度に強くしない）
+  if (Math.abs(contrastGain - 1.0) > 1e-3) {
+    const a = Math.min(0.5, (contrastGain - 1.0) * 0.6);
+    if (a > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.globalAlpha = a;
+      ctx.fillStyle = 'rgb(127,127,127)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+  }
+
+  // 後始末
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
