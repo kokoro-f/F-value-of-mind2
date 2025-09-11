@@ -185,6 +185,7 @@ async function startCamera(facing = 'environment') {
     currentStream = stream;
     isFrontCamera = (facing === 'user');
     video.style.display = 'none';
+    setPreviewMirror();
     startPreviewLoop();
   } catch (err) {
     console.error('カメラエラー:', err);
@@ -229,6 +230,13 @@ function applyFnumberLight(f){
       previewCanvas.style.filter = 'none';
     }
   }
+}
+
+// プレビューCanvasを内カメのときだけ鏡像に（保存には影響しない）
+function setPreviewMirror() {
+  if (!previewCanvas) return;
+  previewCanvas.style.transformOrigin = 'left center';
+  previewCanvas.style.transform = isFrontCamera ? 'scaleX(-1)' : 'none';
 }
 
   // ====== 画面遷移 ======
@@ -490,22 +498,21 @@ for (let i = 0; i < frameCount; i++) {
   // ★ 端末対応で分岐：見た目＝保存を一致させる
   if (CANVAS_FILTER_SUPPORTED) {
     // Canvas2D.filter 対応端末：同じフィルタ文字列をそのまま焼き込む
-    ctx.filter = buildFilterString(); // 例: brightness(...) contrast(...)
-    ctx.globalAlpha = 1;
-    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-    ctx.filter = 'none';
-  } else {
+   ctx.filter = buildFilterString();
+   ctx.globalAlpha = 1;
+   drawVideoTo(ctx, captureCanvas.width, captureCanvas.height, { mirrorFront: true }); // ★変更
+   ctx.filter = 'none';
+     } else {
     // 非対応端末：まず素で描いてから手動合成で明暗/コントラストを適用
-    ctx.globalAlpha = 1;
-    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-    applyBrightnessComposite(
-      ctx,
-      currentBrightness,
-      captureCanvas.width,
-      captureCanvas.height,
-      CONTRAST_GAIN
-    );
-  }
+  ctx.globalAlpha = 1;
+  drawVideoTo(ctx, captureCanvas.width, captureCanvas.height, { mirrorFront: true }); // ★変更
+  applyBrightnessComposite(
+    ctx,
+    currentBrightness,
+    captureCanvas.width,
+    captureCanvas.height,
+    CONTRAST_GAIN
+  );
   
   await sleep(1000 / frameRate);
 }
@@ -656,6 +663,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
