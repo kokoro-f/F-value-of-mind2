@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     skip: "スキップ",
     switchCam: "切り替え",
     shoot: "撮影",
-    info: "情報",
+    info: "ギャラリー",
     bpmMeasuring: (remain) => `計測中… 残り ${remain} 秒`,
     bpmResult: (bpm) => `推定BPM: ${bpm}`,
     cameraError: "カメラを起動できません。端末の設定からカメラ権限を許可してください。"
