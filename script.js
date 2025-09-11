@@ -193,6 +193,20 @@ async function startCamera(facing = 'environment') {
   }
 }
 
+// ★ ここに置くと読みやすい ★
+// 内カメラのときだけ水平反転して描く（保存用）
+function drawVideoTo(ctx, w, h, { mirrorFront = false } = {}) {
+  if (isFrontCamera && mirrorFront) {
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, w, h);
+    ctx.restore();
+  } else {
+    ctx.drawImage(video, 0, 0, w, h);
+  }
+}
+  
 // ====== F値→明暗 (強化版 1/f² + 共通フィルタ) ======
 let selectedFValue = 32.0;
 const MIN_F = 1.0, MAX_F = 32.0;
@@ -668,6 +682,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
