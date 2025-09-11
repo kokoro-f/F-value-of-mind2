@@ -24,9 +24,7 @@
     <!-- 画面２：使い方 -->
     <div id="screen-introduction" class="screen" aria-hidden="true">
       <h2 data-i18n="howtoTitle">使い方</h2>
-      <p data-i18n="howtoText">
-        「ココロカメラ」は、今の心の状態を写真に映し出します。まずは今の心の状態に近い「絞り値(F値)」を選んでください。
-      </p>
+      <p data-i18n-html="howtoText"></p>
 
       <!-- 任意：ファイル名メタに入れる項目 -->
       <div class="meta-inputs" style="display:flex; gap:8px; margin:12px 0;">
@@ -40,7 +38,7 @@
     <!-- 画面３：F値入力 -->
     <div id="screen-fvalue-input" class="screen" aria-hidden="true">
       <div class="f-value-title-container">
-        <p class="f-value-title" data-i18n="fInputTitle">現在のF値を入力</p>
+        <p class="f-value-title" data-i18n-html="fInputTitle"></p>
       </div>
       <div class="aperture-control-container">
         <div class="aperture-control" role="slider" aria-valuemin="1.2" aria-valuemax="32.0" aria-valuenow="32.0" aria-label="F値">
@@ -63,8 +61,8 @@
       <h2 data-i18n="bpmTitle">BPM計測</h2>
       <!-- マークアップ（strong）を保持したいので data-i18n-html を使う -->
       <p class="bpm-instruction" data-i18n-html="bpmPrep_html">
-        カメラに<strong>指先を軽く当てて</strong>ください。赤みの変化から心拍数を推定します（約15秒）。
-      </p>
+　　　<p class="bpm-instruction" data-i18n-html="bpmPrep_html"></p>
+
 
       <div class="bpm-video-wrapper">
         <video id="bpm-video" autoplay playsinline muted></video>
@@ -113,3 +111,4 @@
   </div>
 </body>
 </html>
+
