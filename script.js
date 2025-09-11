@@ -22,13 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
     start: "はじめる",
     next: "次へ",
     howtoTitle: "名前とルームコードの入力",
-    howtoText: "あなたの名前（ニックネーム）とルームコードを入力してください。（任意）",
-    fInputTitle: "今の心の状態に合わせて円を広げたり縮めたりしてください",
+    howtoText: "あなたの名前（ニックネーム）とルームコードを<br>入力してください。（任意）",
+    fInputTitle: "今の心の状態に合わせて<br>円を広げたり縮めたりしてください",
     fHint1: "F値が小さい=開放的",
     fHint2: "F値が大きい＝集中している",
     decide: "決定",
     bpmTitle: "ココロのシャッタースピード",
-    bpmPrep_html: 'カメラに<strong>指先を軽く当てて</strong>ください赤みの変化から心拍数を測定します',
+    bpmPrep_html: 'カメラに<strong>指先を軽く当てて</strong>ください<br>赤みの変化から心拍数を測定します',
     bpmReady: "準備ができたら計測開始を押してください",
     bpmStart: "計測開始",
     skip: "スキップ",
@@ -599,6 +599,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
