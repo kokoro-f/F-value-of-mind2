@@ -125,32 +125,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-// ====== F値→明暗 (強化版 1/f²) ======
+// ====== F値→明暗 (強化版 1/f² + 共通フィルタ) ======
 let selectedFValue = 32.0;
 const MIN_F = 1.0, MAX_F = 32.0;
 
-// F=1 でかなり明るく、F=32 でしっかり暗くなるように調整
-const BRIGHT_MIN = 0.12;   // 最暗側（これ以下に潰れないように）
-const BRIGHT_MAX = 3.6;    // 最明側（白飛びしやすいので 4.0 以下推奨）
-const BRIGHT_STRENGTH = 1.35; // カーブ強調。数値↑ほど暗側が暗くなる
+// F=1 でぱっと明るく、F=32 でぐっと暗くなる
+const BRIGHT_MIN = 0.12;
+const BRIGHT_MAX = 3.6;
+const BRIGHT_STRENGTH = 1.35;
+
+const CONTRAST_GAIN = 1.10; // コントラスト少し強調
 
 let currentBrightness = 1.0;
 
 const clamp = (x,a,b)=>Math.min(Math.max(x,a),b);
+
 function brightnessFromF(f){
-  // f を 0..1 に正規化
   const t = Math.max(0, Math.min(1, (f - MIN_F) / (MAX_F - MIN_F)));
-  // 暗側を強調するため指数カーブ
   const t2 = Math.pow(t, BRIGHT_STRENGTH);
-  // 対数補間でなめらかに遷移
   const lnMin = Math.log(BRIGHT_MIN), lnMax = Math.log(BRIGHT_MAX);
   return Math.exp( lnMax + (lnMin - lnMax) * t2 );
 }
+
+// ★ プレビュー/保存 共通のフィルタ文字列を生成
+function buildFilterString(){
+  return `brightness(${currentBrightness}) contrast(${CONTRAST_GAIN})`;
+}
+
+// F値変更時に呼ぶ
 function applyFnumberLight(f){
   currentBrightness = brightnessFromF(f);
-  // プレビューCanvas自体にCSSフィルタを適用（効きが大きくわかりやすい）
   if (previewCanvas) {
-    previewCanvas.style.filter = `brightness(${currentBrightness})`;
+    previewCanvas.style.filter = buildFilterString(); // プレビュー反映
   }
 }
 
@@ -510,4 +516,5 @@ function applyFnumberLight(f){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
