@@ -417,6 +417,11 @@ function applyFnumberLight(f){
   // ====== 撮影履歴 ======
   const savedPhotos = []; // { url, filename }
 
+    document.getElementById('camera-switch-btn')?.addEventListener('click', async () => {
+    const next = (currentFacing === 'user') ? 'environment' : 'user';
+    await startCamera(next);
+  });
+  
   // ====== シャッター処理（1/BPMの擬似露光 + 1/f²の明暗を焼き込み） ======
   shutterBtn?.addEventListener('click', async () => {
     try {
@@ -630,6 +635,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
