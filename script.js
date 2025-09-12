@@ -269,6 +269,10 @@ function applyFnumberLight(f){
   let bpmStream = null;
   let bpmLoopId = null;
   const defaultBpm = 60;
+/* ここに追加 */
+  const BPM_MIN = 60;
+  const BPM_MAX = 100;
+/* ここまで */
   let lastMeasuredBpm = 0;
 
   async function startBpmCamera() {
@@ -346,9 +350,10 @@ function applyFnumberLight(f){
         bpmStatus.textContent = T.bpmMeasuring(Math.ceil(remain));
         bpmLoopId = requestAnimationFrame(loop);
       } else {
-        const bpm = estimateBpmFromSeries(vals, durationSec) ?? defaultBpm;
-        lastMeasuredBpm = bpm;
-        bpmStatus.textContent = T.bpmResult(bpm);
+        const estimated = estimateBpmFromSeries(vals, durationSec) ?? defaultBpm;
+        const clamped = Math.max(BPM_MIN, Math.min(BPM_MAX, Math.round(estimated)));
+        lastMeasuredBpm = clamped;
+        bpmStatus.textContent = T.bpmResult(clamped);
         setTimeout(async () => {
           showScreen('camera');
           const fHud = document.getElementById('fvalue-display-camera');
@@ -636,6 +641,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
