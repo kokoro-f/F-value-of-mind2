@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
     screens[key]?.classList.add('active');
     screens[key]?.setAttribute('aria-hidden','false');
   }
+    /* ←← ここ（ハンドラの末尾）に1行追加 */
+  document.getElementById('hud-ss')?.remove();
+});
 
   // ====== 文言 ======
   const T = {
@@ -635,6 +638,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
