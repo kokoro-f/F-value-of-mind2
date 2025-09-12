@@ -139,7 +139,6 @@ async function startCamera(facingMode = 'environment') {
 
     const constraints = {
       video: {
-        // まずは facingMode を素直に要求
         facingMode: (facingMode === 'user') ? { ideal: 'user' } : { ideal: 'environment' },
         width: { ideal: 1280 }, height: { ideal: 720 }
       },
@@ -147,7 +146,17 @@ async function startCamera(facingMode = 'environment') {
     };
 
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    // ★ autoplay 安定化（iOS/Safari 対策）
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('muted', '');   // 属性としても立てておく
+    video.muted = true;
+
     video.srcObject = stream;
+
+    // ★ 極短の猶予（端末差対策）
+    await new Promise(r => setTimeout(r, 50));
+
     await video.play();
 
     currentStream = stream;
@@ -274,21 +283,28 @@ function applyFnumberLight(f){
   const defaultBpm = 60;
   let lastMeasuredBpm = 0;
 
-  async function startBpmCamera() {
-    try {
-      if (bpmStream) bpmStream.getTracks().forEach(t => t.stop());
-      bpmStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width:{ideal:640}, height:{ideal:480} },
-        audio: false
-      });
-      bpmVideo.srcObject = bpmStream;
-      await bpmVideo.play();
-      bpmStatus.textContent = T.bpmReady;
-    } catch (e) {
-      console.error(e);
-      bpmStatus.textContent = 'カメラ起動に失敗しました。スキップも可能です。';
-    }
+ async function startBpmCamera() {
+  try {
+    if (bpmStream) bpmStream.getTracks().forEach(t => t.stop());
+    bpmStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width:{ideal:640}, height:{ideal:480} },
+      audio: false
+    });
+
+    // ★ 追加
+    bpmVideo.setAttribute('playsinline', 'true');
+    bpmVideo.setAttribute('muted', '');
+    bpmVideo.muted = true;
+
+    bpmVideo.srcObject = bpmStream;
+    await bpmVideo.play();
+    bpmStatus.textContent = T.bpmReady;
+  } catch (e) {
+    console.error(e);
+    bpmStatus.textContent = 'カメラ起動に失敗しました。スキップも可能です。';
   }
+}
+
   function stopBpmCamera() {
     if (bpmLoopId) cancelAnimationFrame(bpmLoopId);
     bpmLoopId = null;
@@ -323,7 +339,7 @@ function applyFnumberLight(f){
     return bpm;
   }
 
-  async function measureBpm(durationSec = 15) {
+  async function measureBpm(durationSec = 10) {
     if (!bpmVideo) return;
     const vals = [];
     const start = performance.now();
@@ -349,17 +365,28 @@ function applyFnumberLight(f){
         bpmStatus.textContent = T.bpmMeasuring(Math.ceil(remain));
         bpmLoopId = requestAnimationFrame(loop);
       } else {
-        const bpm = estimateBpmFromSeries(vals, durationSec) ?? defaultBpm;
-        lastMeasuredBpm = bpm;
-        bpmStatus.textContent = T.bpmResult(bpm);
-        setTimeout(async () => {
-          showScreen('camera');
-          const fHud = document.getElementById('fvalue-display-camera');
-          if (fHud) fHud.textContent = `F: ${Math.round(parseFloat(apertureInput.value))}`;
-          updateCameraHudBpm();
-          await startCamera('environment');
-        }, 800);
+// 計測終了後（置き換え）
+      const bpm = estimateBpmFromSeries(vals, durationSec) ?? defaultBpm;
+      lastMeasuredBpm = bpm;
+      bpmStatus.textContent = T.bpmResult(bpm);
+
+// ちょい演出のための短い待ち（必要なければ 0 に）
+      setTimeout(async () => {
+  // 1) まず BPM カメラを完全停止
         stopBpmCamera();
+        await new Promise(r => setTimeout(r, 80)); // ★端末によっては少し待つと安定
+
+  // 2) 撮影カメラを起動（裏で準備しておく）
+        await startCamera('environment');
+
+  // 3) 画面を切り替える（起動できてから見せると黒画面が出にくい）
+        showScreen('camera');
+
+        const fHud = document.getElementById('fvalue-display-camera');
+        if (fHud) fHud.textContent = `F: ${Math.round(parseFloat(apertureInput.value))}`;
+        updateCameraHudBpm();
+      }, 300); // ← 結果表示を少し見せたいなら 300ms 程度。不要なら 0 でOK
+
       }
     };
     loop();
@@ -637,8 +664,3 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
-
-
-
-
-
