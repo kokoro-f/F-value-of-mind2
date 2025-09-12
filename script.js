@@ -401,17 +401,19 @@ function applyFnumberLight(f){
   const sleep = ms => new Promise(res => setTimeout(res, ms));
 
   // ====== ファイル名 ======
-  function fmtShutterLabel(sec) { return sec >= 1 ? `${sec.toFixed(1)}s` : `1-${Math.round(1/sec)}`; }
-  function safeNum(n) { return String(n).replace('.', '-'); }
-  function buildFilename({ fValue, bpm, shutterSec, when = new Date(), who = 'anon', room = 'room' }) {
-    const pad = (x) => x.toString().padStart(2, '0');
-    const y = when.getFullYear(), m = pad(when.getMonth()+1), d = pad(when.getDate());
-    const hh = pad(when.getHours()), mm = pad(when.getMinutes()), ss = pad(when.getSeconds());
-    const fStr = safeNum(Number(fValue).toFixed(1));
-    const bpmStr = bpm ?? '--';
-    const ssStr = fmtShutterLabel(shutterSec);
-    return `cocoro_${y}-${m}-${d}_${hh}-${mm}-${ss}_${room}_${who}_F${fStr}_BPM${bpmStr}_SS${ssStr}.png`;
-  }
+function safeNum(n) { return String(n).replace('.', '-'); }
+
+function buildFilename({ fValue, bpm, when = new Date(), who = 'anon', room = 'room' }) {
+  const pad = (x) => x.toString().padStart(2, '0');
+  const y = when.getFullYear(), m = pad(when.getMonth()+1), d = pad(when.getDate());
+  const hh = pad(when.getHours()), mm = pad(when.getMinutes()), ss = pad(when.getSeconds());
+  const fStr = safeNum(Number(fValue).toFixed(1));
+  const bpmStr = (bpm == null || isNaN(bpm)) ? '--' : Math.round(bpm); // 小数→四捨五入
+
+  // SS表記を削除し、BPMだけに
+  return `cocoro_${y}-${m}-${d}_${hh}-${mm}-${ss}_${room}_${who}_F${fStr}_BPM${bpmStr}.png`;
+}
+
 
   // ====== 撮影履歴 ======
   const savedPhotos = []; // { url, filename }
@@ -495,9 +497,9 @@ if (CANVAS_FILTER_SUPPORTED) {
       const filename = buildFilename({
         fValue: selectedFValue,
         bpm: (lastMeasuredBpm || null),
-        shutterSec: sec,
         who, room,
       });
+
 
       const blob = await new Promise((resolve) => {
         if (captureCanvas.toBlob) {
@@ -634,6 +636,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
