@@ -83,6 +83,9 @@ const CANVAS_FILTER_SUPPORTED = (() => {
   let currentStream = null;
   let isFrontCamera = false;
   let rafId = null;
+  
+  let currentFacing = 'environment';     // 'user' or 'environment'
+  const FORCE_UNMIRROR_FRONT = true;  
 
 function startPreviewLoop() {
   if (rafId) cancelAnimationFrame(rafId);
@@ -99,20 +102,28 @@ function startPreviewLoop() {
         previewCtx.save();
         previewCtx.imageSmoothingEnabled = true;
 
-        // まずは素の絵を描く
-        previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-        previewCtx.drawImage(video, 0, 0, previewCanvas.width, previewCanvas.height);
+// まずは素の絵を描く（毎フレーム）
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
 
-        // ★ Canvas2D.filter 非対応端末では、プレビューも手動合成で明暗を適用
-        if (!CANVAS_FILTER_SUPPORTED) {
-          applyBrightnessComposite(
-            previewCtx,
-            currentBrightness,
-            previewCanvas.width,
-            previewCanvas.height,
-            CONTRAST_GAIN
-          );
-        }
+// ここでフロントの自動ミラーを“反転描画”で打ち消す
+      if (currentFacing === 'user' && FORCE_UNMIRROR_FRONT) {
+  // ← すでに上で previewCtx.save() 済みなので、その座標系を一時的に反転
+        previewCtx.translate(previewCanvas.width, 0);
+        previewCtx.scale(-1, 1);
+      }
+      previewCtx.drawImage(video, 0, 0, previewCanvas.width, previewCanvas.height);
+
+// ★ Canvas2D.filter 非対応端末では、プレビューも手動合成で明暗を適用
+       if (!CANVAS_FILTER_SUPPORTED) {
+        applyBrightnessComposite(
+           previewCtx,
+          currentBrightness,
+          previewCanvas.width,
+          previewCanvas.height,
+          CONTRAST_GAIN
+        );
+      }
+
         previewCtx.restore();
       }
     }
@@ -138,6 +149,7 @@ function startPreviewLoop() {
       await video.play();
       currentStream = stream;
       isFrontCamera = (facingMode === 'user');
+      currentFacing = facingMode; 
       // 実videoは非表示。プレビューCanvasに描く
       video.style.display = 'none';
       startPreviewLoop();
@@ -431,24 +443,43 @@ for (let i = 0; i < frameCount; i++) {
   ctx.fillRect(0, 0, captureCanvas.width, captureCanvas.height);
 
   // ★ 端末対応で分岐：見た目＝保存を一致させる
-  if (CANVAS_FILTER_SUPPORTED) {
-    // Canvas2D.filter 対応端末：同じフィルタ文字列をそのまま焼き込む
-    ctx.filter = buildFilterString(); // 例: brightness(...) contrast(...)
-    ctx.globalAlpha = 1;
+// ★ 端末対応で分岐：見た目＝保存を一致させる（B＝どちらも非反転）
+if (CANVAS_FILTER_SUPPORTED) {
+  ctx.filter = buildFilterString(); // 例: brightness(...) contrast(...)
+  ctx.globalAlpha = 1;
+
+  if (currentFacing === 'user' && FORCE_UNMIRROR_FRONT) {
+    ctx.save();
+    ctx.translate(captureCanvas.width, 0);
+    ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-    ctx.filter = 'none';
+    ctx.restore();
   } else {
-    // 非対応端末：まず素で描いてから手動合成で明暗/コントラストを適用
-    ctx.globalAlpha = 1;
     ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-    applyBrightnessComposite(
-      ctx,
-      currentBrightness,
-      captureCanvas.width,
-      captureCanvas.height,
-      CONTRAST_GAIN
-    );
   }
+
+  ctx.filter = 'none';
+} else {
+  ctx.globalAlpha = 1;
+
+  if (currentFacing === 'user' && FORCE_UNMIRROR_FRONT) {
+    ctx.save();
+    ctx.translate(captureCanvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+    ctx.restore();
+  } else {
+    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+  }
+
+  applyBrightnessComposite(
+    ctx,
+    currentBrightness,
+    captureCanvas.width,
+    captureCanvas.height,
+    CONTRAST_GAIN
+  );
+}
   
   await sleep(1000 / frameRate);
 }
@@ -599,5 +630,6 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
