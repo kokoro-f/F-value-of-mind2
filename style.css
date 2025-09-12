@@ -156,12 +156,22 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 }
 
 /* カメラ画面 */
-#screen-camera { background: #000; }
+#screen-camera {
+  background: #000;
+  position: relative;   /* ★ 追加：video/canvasを内側に閉じ込める */
+  overflow: hidden;
+}
 #video {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; z-index: 1;
+  backface-visibility: hidden;   /* ★ 追加 */
+  transform: translateZ(0);      /* ★ 追加 */
 }
 #canvas { display: none; }
+
+/* プレビューCanvasとUIの重なり調整（必要なら） */
+#screen-camera canvas { z-index: 1; }
+.camera-ui { z-index: 2; }
 
 .camera-ui {
   position: absolute; inset: 0;
@@ -256,7 +266,3 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 .cc-btn { padding: 6px 10px; border-radius: 6px; border: none; cursor: pointer; }
 .cc-btn--light { background: #fff; color: #000; }
 .cc-btn { background: #2eaadc; color: #fff; }
-
-
-
-
