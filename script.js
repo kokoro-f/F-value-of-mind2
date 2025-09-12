@@ -388,8 +388,7 @@ function applyFnumberLight(f){
   }
   function updateCameraHudBpm() {
     const bpm = lastMeasuredBpm || defaultBpm;
-    const label = displayShutterLabelFromBpm(bpm);
-    if (bpmHud) bpmHud.textContent = `BPM: ${bpm || '--'} / SS: ${label}`;
+    if (bpmHud) bpmHud.textContent = `BPM: ${bpm || '--'}`; // ← SS表記をやめる
   }
   updateCameraHudBpm();
 
@@ -635,6 +634,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
