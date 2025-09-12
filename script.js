@@ -139,7 +139,6 @@ async function startCamera(facingMode = 'environment') {
 
     const constraints = {
       video: {
-        // まずは facingMode を素直に要求
         facingMode: (facingMode === 'user') ? { ideal: 'user' } : { ideal: 'environment' },
         width: { ideal: 1280 }, height: { ideal: 720 }
       },
@@ -148,13 +147,25 @@ async function startCamera(facingMode = 'environment') {
 
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
+
+    // ★ メタデータが入るのを待つ（サイズが取れるまで）
+    if (video.readyState < 1) {
+      await new Promise(res => video.addEventListener('loadedmetadata', res, { once:true }));
+    }
+
+    // ★ iOS/Safari 安定化
+    video.setAttribute('playsinline','');
+    video.setAttribute('muted','');
+    video.muted = true;
+
     await video.play();
 
     currentStream = stream;
     currentFacing = facingMode;
 
-    // 実videoは非表示。プレビューCanvasに描く
-    video.style.display = 'none';
+    // ★ display:none は使わない（ここは消す）
+    // video.style.display = 'none';
+
     startPreviewLoop();
   } catch (err) {
     console.error('カメラエラー:', err);
@@ -637,6 +648,7 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
+
 
 
 
