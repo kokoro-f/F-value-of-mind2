@@ -366,7 +366,7 @@ function applyFnumberLight(f){
   }
   document.getElementById('bpm-start-btn')?.addEventListener('click', () => {
     bpmStatus.textContent = '計測中…';
-    measureBpm(10);
+    measureBpm(15);
   });
   document.getElementById('bpm-skip-btn')?.addEventListener('click', async () => {
     lastMeasuredBpm = defaultBpm;
@@ -637,7 +637,6 @@ function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
   // ====== 初期表示 ======
   showScreen('initial');
 });
-
 
 
 
