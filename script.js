@@ -1,4 +1,6 @@
-// ココロカメラ：F値→明暗(1/f²)・BPM→SS(1/BPM秒)・軽量プレビュー/保存・ギャラリー
+// script.js（統合版）
+// ココロカメラ：F値→明暗(1/f²)・BPM→SS(1/BPM秒)・軽量プレビュー/保存
+// + アルバム（localStorage永続）+ ギャラリーモーダル + ライトボックス見返し
 document.addEventListener('DOMContentLoaded', () => {
   // ====== 画面管理 ======
   const screens = {
@@ -53,14 +55,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   applyTexts(T);
 
-  // Canvas2D の filter サポート検出（trueなら ctx.filter が使える）
-const CANVAS_FILTER_SUPPORTED = (() => {
-  try {
-    const c = document.createElement('canvas');
-    const ctx = c.getContext('2d');
-    return ctx && ('filter' in ctx);
-  } catch { return false; }
-})();
+  // Canvas2D の filter サポート検出
+  const CANVAS_FILTER_SUPPORTED = (() => {
+    try {
+      const c = document.createElement('canvas');
+      const ctx = c.getContext('2d');
+      return ctx && ('filter' in ctx);
+    } catch { return false; }
+  })();
 
   // ====== 要素参照 ======
   const video = document.getElementById('video');
@@ -73,7 +75,6 @@ const CANVAS_FILTER_SUPPORTED = (() => {
     Object.assign(previewCanvas.style, {
       position: 'absolute', top: '0', left: '0', width: '100%', height: '100%', zIndex: '1'
     });
-    // videoの前に挿入（videoは非表示にするのでOK）
     screens.camera.insertBefore(previewCanvas, screens.camera.firstChild);
   }
 
@@ -83,55 +84,54 @@ const CANVAS_FILTER_SUPPORTED = (() => {
   let currentStream = null;
   let isFrontCamera = false;
   let rafId = null;
-  
-  let currentFacing = 'environment';     // 'user' or 'environment'
-  const FORCE_UNMIRROR_FRONT = true;  
+  let currentFacing = 'environment';   // 'user' or 'environment'
+  const FORCE_UNMIRROR_FRONT = TRUE_BOOL_FIX(); // 小文字 true/false を安全に固定
 
-function startPreviewLoop() {
-  if (rafId) cancelAnimationFrame(rafId);
-  const render = (ts) => {
-    if (video.videoWidth && video.videoHeight) {
-      if (previewCanvas.width !== video.videoWidth || previewCanvas.height !== video.videoHeight) {
-        previewCanvas.width  = video.videoWidth;
-        previewCanvas.height = video.videoHeight;
+  function TRUE_BOOL_FIX(){ return true; }
+
+  function startPreviewLoop() {
+    if (rafId) cancelAnimationFrame(rafId);
+    const render = (ts) => {
+      if (video.videoWidth && video.videoHeight) {
+        if (previewCanvas.width !== video.videoWidth || previewCanvas.height !== video.videoHeight) {
+          previewCanvas.width  = video.videoWidth;
+          previewCanvas.height = video.videoHeight;
+        }
+        const interval = 1000 / PREVIEW_FPS;
+        if ((ts - lastPreviewTs) >= interval) {
+          lastPreviewTs = ts;
+
+          previewCtx.save();
+          previewCtx.imageSmoothingEnabled = true;
+
+          // クリア
+          previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+
+          // フロント自動ミラーを打ち消す
+          if (currentFacing === 'user' && FORCE_UNMIRROR_FRONT) {
+            previewCtx.translate(previewCanvas.width, 0);
+            previewCtx.scale(-1, 1);
+          }
+          // 素の絵
+          previewCtx.drawImage(video, 0, 0, previewCanvas.width, previewCanvas.height);
+
+          // filter未対応端末→明暗は手動合成へ任せる
+          if (!CANVAS_FILTER_SUPPORTED) {
+            applyBrightnessComposite(
+              previewCtx,
+              currentBrightness,
+              previewCanvas.width,
+              previewCanvas.height,
+              CONTRAST_GAIN
+            );
+          }
+          previewCtx.restore();
+        }
       }
-      const interval = 1000 / PREVIEW_FPS;
-      if ((ts - lastPreviewTs) >= interval) {
-        lastPreviewTs = ts;
-
-        previewCtx.save();
-        previewCtx.imageSmoothingEnabled = true;
-
-// まずは素の絵を描く（毎フレーム）
-      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-
-// ここでフロントの自動ミラーを“反転描画”で打ち消す
-      if (currentFacing === 'user' && FORCE_UNMIRROR_FRONT) {
-  // ← すでに上で previewCtx.save() 済みなので、その座標系を一時的に反転
-        previewCtx.translate(previewCanvas.width, 0);
-        previewCtx.scale(-1, 1);
-      }
-      previewCtx.drawImage(video, 0, 0, previewCanvas.width, previewCanvas.height);
-
-// ★ Canvas2D.filter 非対応端末では、プレビューも手動合成で明暗を適用
-       if (!CANVAS_FILTER_SUPPORTED) {
-        applyBrightnessComposite(
-           previewCtx,
-          currentBrightness,
-          previewCanvas.width,
-          previewCanvas.height,
-          CONTRAST_GAIN
-        );
-      }
-
-        previewCtx.restore();
-      }
-    }
+      rafId = requestAnimationFrame(render);
+    };
     rafId = requestAnimationFrame(render);
-  };
-  rafId = requestAnimationFrame(render);
-}
-
+  }
   function stopPreviewLoop(){ if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
 
   async function startCamera(facingMode = 'environment') {
@@ -149,9 +149,8 @@ function startPreviewLoop() {
       await video.play();
       currentStream = stream;
       isFrontCamera = (facingMode === 'user');
-      currentFacing = facingMode; 
-      // 実videoは非表示。プレビューCanvasに描く
-      video.style.display = 'none';
+      currentFacing = facingMode;
+      video.style.display = 'none'; // videoは非表示、プレビューCanvasに描く
       startPreviewLoop();
     } catch (err) {
       console.error('カメラエラー:', err);
@@ -159,44 +158,37 @@ function startPreviewLoop() {
     }
   }
 
-// ====== F値→明暗 (強化版 1/f² + 共通フィルタ) ======
-let selectedFValue = 32.0;
-const MIN_F = 1.0, MAX_F = 32.0;
+  // ====== F値→明暗 (強化版 1/f² + 共通フィルタ) ======
+  let selectedFValue = 32.0;
+  const MIN_F = 1.0, MAX_F = 32.0;
 
-const BRIGHT_MIN = 0.12;      // 暗側の下限
-const BRIGHT_MAX = 3.6;       // 明側の上限
-const BRIGHT_STRENGTH = 1.35; // カーブ強調（↑で暗側がより暗く）
-const CONTRAST_GAIN = 1.10;   // ほんの少しコントラスト
+  const BRIGHT_MIN = 0.12;      // 暗側の下限
+  const BRIGHT_MAX = 3.6;       // 明側の上限
+  const BRIGHT_STRENGTH = 1.35; // カーブ強調
+  const CONTRAST_GAIN = 1.10;   // 少しだけコントラスト
 
-let currentBrightness = 1.0;
+  let currentBrightness = 1.0;
+  const clamp = (x,a,b)=>Math.min(Math.max(x,a),b);
 
-const clamp = (x,a,b)=>Math.min(Math.max(x,a),b);
-
-function brightnessFromF(f){
-  const t = Math.max(0, Math.min(1, (f - MIN_F) / (MAX_F - MIN_F)));
-  const t2 = Math.pow(t, BRIGHT_STRENGTH);
-  const lnMin = Math.log(BRIGHT_MIN), lnMax = Math.log(BRIGHT_MAX);
-  return Math.exp( lnMax + (lnMin - lnMax) * t2 );
-}
-
-// プレビュー/保存 共通：同じフィルタ文字列を返す
-function buildFilterString(){
-  return `brightness(${currentBrightness}) contrast(${CONTRAST_GAIN})`;
-}
-
-// F値変更時：プレビューに反映
-function applyFnumberLight(f){
-  currentBrightness = brightnessFromF(f);
-  if (previewCanvas) {
-    if (CANVAS_FILTER_SUPPORTED) {
-      // 対応端末：CSSフィルタで軽く＆見やすく
-      previewCanvas.style.filter = buildFilterString();
-    } else {
-      // 未対応端末：CSSフィルタは外し、描画側で合成（後述）に任せる
-      previewCanvas.style.filter = 'none';
+  function brightnessFromF(f){
+    const t = Math.max(0, Math.min(1, (f - MIN_F) / (MAX_F - MIN_F)));
+    const t2 = Math.pow(t, BRIGHT_STRENGTH);
+    const lnMin = Math.log(BRIGHT_MIN), lnMax = Math.log(BRIGHT_MAX);
+    return Math.exp( lnMax + (lnMin - lnMax) * t2 );
+  }
+  function buildFilterString(){
+    return `brightness(${currentBrightness}) contrast(${CONTRAST_GAIN})`;
+  }
+  function applyFnumberLight(f){
+    currentBrightness = brightnessFromF(f);
+    if (previewCanvas) {
+      if (CANVAS_FILTER_SUPPORTED) {
+        previewCanvas.style.filter = buildFilterString();
+      } else {
+        previewCanvas.style.filter = 'none';
+      }
     }
   }
-}
 
   // ====== 画面遷移 ======
   document.getElementById('initial-next-btn')?.addEventListener('click', () => showScreen('introduction'));
@@ -269,10 +261,10 @@ function applyFnumberLight(f){
   let bpmStream = null;
   let bpmLoopId = null;
   const defaultBpm = 60;
-/* ここに追加 */
+
+  // 制限
   const BPM_MIN = 60;
   const BPM_MAX = 100;
-/* ここまで */
   let lastMeasuredBpm = 0;
 
   async function startBpmCamera() {
@@ -378,22 +370,12 @@ function applyFnumberLight(f){
     await startCamera('environment');
   });
 
-  // ====== SS(1/BPM) と HUD ======
+  // ====== SS と HUD ======
   const shutterBtn = document.getElementById('camera-shutter-btn');
   const bpmHud = document.getElementById('bpm-display-camera');
-
-  function displayShutterLabelFromBpm(bpm) {
-    const d = Math.max(1, Math.round(bpm || 60));
-    return `1/${d}s`;
-  }
-  function exposureTimeSec() {
-    const bpm = lastMeasuredBpm || defaultBpm;
-    const sec = 1 / Math.max(1, bpm);
-    return Math.max(1/2000, Math.min(2.0, sec)); // 安全クリップ
-  }
   function updateCameraHudBpm() {
     const bpm = lastMeasuredBpm || defaultBpm;
-    if (bpmHud) bpmHud.textContent = `BPM: ${bpm || '--'}`; // ← SS表記をやめる
+    if (bpmHud) bpmHud.textContent = `BPM: ${bpm || '--'}`;
   }
   updateCameraHudBpm();
 
@@ -406,28 +388,196 @@ function applyFnumberLight(f){
   const sleep = ms => new Promise(res => setTimeout(res, ms));
 
   // ====== ファイル名 ======
-function safeNum(n) { return String(n).replace('.', '-'); }
+  function safeNum(n) { return String(n).replace('.', '-'); }
+  function buildFilename({ fValue, bpm, when = new Date(), who = 'anon', room = 'room' }) {
+    const pad = (x) => x.toString().padStart(2, '0');
+    const y = when.getFullYear(), m = pad(when.getMonth()+1), d = pad(when.getDate());
+    const hh = pad(when.getHours()), mm = pad(when.getMinutes()), ss = pad(when.getSeconds());
+    const fStr = safeNum(Number(fValue).toFixed(1));
+    const bpmStr = (bpm == null || isNaN(bpm)) ? '--' : Math.round(bpm);
+    return `cocoro_${y}-${m}-${d}_${hh}-${mm}-${ss}_${room}_${who}_F${fStr}_BPM${bpmStr}.png`;
+  }
 
-function buildFilename({ fValue, bpm, when = new Date(), who = 'anon', room = 'room' }) {
-  const pad = (x) => x.toString().padStart(2, '0');
-  const y = when.getFullYear(), m = pad(when.getMonth()+1), d = pad(when.getDate());
-  const hh = pad(when.getHours()), mm = pad(when.getMinutes()), ss = pad(when.getSeconds());
-  const fStr = safeNum(Number(fValue).toFixed(1));
-  const bpmStr = (bpm == null || isNaN(bpm)) ? '--' : Math.round(bpm); // 小数→四捨五入
-
-  // SS表記を削除し、BPMだけに
-  return `cocoro_${y}-${m}-${d}_${hh}-${mm}-${ss}_${room}_${who}_F${fStr}_BPM${bpmStr}.png`;
-}
-
-
-  // ====== 撮影履歴 ======
-  const savedPhotos = []; // { url, filename }
-
-    document.getElementById('camera-switch-btn')?.addEventListener('click', async () => {
+  // カメラ切替
+  document.getElementById('camera-switch-btn')?.addEventListener('click', async () => {
     const next = (currentFacing === 'user') ? 'environment' : 'user';
     await startCamera(next);
   });
-  
+
+  // ====== ここから：アルバム（localStorage永続） ======
+  const infoBtn = document.getElementById('camera-info-btn');
+  const galleryModal = document.getElementById('gallery-modal');
+  const galleryBackdrop = galleryModal?.querySelector('.cc-modal-backdrop');
+  const galleryCloseBtn = document.getElementById('gallery-close-btn');
+  const galleryGrid = document.getElementById('gallery-grid');
+
+  // ライトボックス（存在しない場合は縮小版でフォールバック）
+  const viewer = document.getElementById('viewer-overlay');
+  const viewerImg = document.getElementById('viewer-img');
+  const viewerMeta = document.getElementById('viewer-meta');
+  const viewerPrev = document.getElementById('viewer-prev');
+  const viewerNext = document.getElementById('viewer-next');
+  const viewerClose = document.getElementById('viewer-close');
+  const viewerShare = document.getElementById('viewer-share');
+  const viewerDelete = document.getElementById('viewer-delete');
+  const viewerWrap = document.getElementById('viewer-img-wrap');
+
+  const Album = (() => {
+    let list = [];   // 新しい順
+    let idx = -1;
+    const KEY_NEW = 'kokoro_album';
+    const KEY_OLD = 'fshutter_album'; // 旧形式互換
+
+    function buildMetaText(it){
+      const bpmStr = (it.bpm && it.bpm>=60 && it.bpm<=100) ? `${it.bpm} BPM` : `--- BPM`;
+      const locStr = (typeof it.lat==='number' && typeof it.lon==='number')
+        ? `Lat:${it.lat.toFixed(5)} Lon:${it.lon.toFixed(5)}` : '位置情報なし';
+      const tsStr = it.ts ? new Date(it.ts).toLocaleString('ja-JP') : '';
+      return `F${it.f}\n${bpmStr}\n${locStr}\n${tsStr}`;
+    }
+    function thumb(item, i){
+      const d = document.createElement('div'); d.className='cc-thumb'; d.dataset.index=String(i);
+      const im = document.createElement('img'); im.src=item.src; im.alt = item.filename||'photo';
+      const m = document.createElement('div'); m.className='meta'; m.textContent = buildMetaText(item);
+      d.appendChild(im); d.appendChild(m);
+      d.addEventListener('click', () => openViewer(i));
+      return d;
+    }
+    function renderGrid(){
+      if (!galleryGrid) return;
+      galleryGrid.innerHTML = '';
+      list.forEach((it,i) => galleryGrid.appendChild(thumb(it,i)));
+    }
+    function save(){
+      const out = list.map(it => ({
+        src: it.src, f: it.f, bpm: it.bpm, ts: it.ts,
+        lat: it.lat ?? null, lon: it.lon ?? null, facing: it.facing ?? 'environment'
+      }));
+      try { localStorage.setItem(KEY_NEW, JSON.stringify(out)); } catch(e){ console.warn('保存失敗', e); }
+    }
+    function parseOldMeta(meta){
+      const it={};
+      const f = meta?.match(/F\s*([0-9.]+)/i);
+      const b = meta?.match(/([0-9]{2,3})\s*BPM/i);
+      const la= meta?.match(/Lat:([\-0-9.]+)/i);
+      const lo= meta?.match(/Lon:([\-0-9.]+)/i);
+      it.f = f ? Number(f[1]) : 32;
+      it.bpm = b ? Number(b[1]) : null;
+      it.lat = la ? Number(la[1]) : null;
+      it.lon = lo ? Number(lo[1]) : null;
+      it.ts = Date.now();
+      return it;
+    }
+    function load(){
+      list = [];
+      // 新形式
+      const savedNew = localStorage.getItem(KEY_NEW);
+      if (savedNew){
+        try { list = JSON.parse(savedNew) || []; } catch(e){ console.warn(e); }
+      }
+      // 旧形式 {src, meta}
+      if (!list.length){
+        const savedOld = localStorage.getItem(KEY_OLD);
+        if (savedOld){
+          try {
+            const arr = JSON.parse(savedOld) || [];
+            list = arr.map(row => {
+              const p = parseOldMeta(row.meta||'');
+              return { src: row.src, f: p.f, bpm: p.bpm, ts: p.ts, lat:p.lat, lon:p.lon, facing:'environment' };
+            });
+          } catch(e){ console.warn(e); }
+        }
+      }
+      list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+      renderGrid();
+    }
+    function add(item){ list.unshift(item); renderGrid(); save(); }
+    function openModal(){
+      if (!galleryModal) return;
+      galleryModal.classList.remove('hidden'); galleryModal.setAttribute('aria-hidden','false');
+    }
+    function closeModal(){
+      if (!galleryModal) return;
+      galleryModal.classList.add('hidden'); galleryModal.setAttribute('aria-hidden','true');
+    }
+
+    // ===== ライトボックス =====
+    // 変形・パン
+    let vScale=1, vX=0, vY=0, vLastPinch=0, vPan=false, vLX=0, vLY=0, vTapTime=0;
+    function applyViewerTransform(){ if (viewerImg) viewerImg.style.transform = `translate(${vX}px, ${vY}px) scale(${vScale})`; }
+    function resetViewerTransform(){ vScale=1; vX=0; vY=0; applyViewerTransform(); }
+
+    function openViewer(i){
+      if (!list.length) return;
+      if (!viewer || !viewerImg || !viewerMeta) {
+        // フォールバック：オーバーレイ未設置なら新規タブで表示
+        window.open(list[i].src, '_blank'); return;
+      }
+      idx = Math.max(0, Math.min(i, list.length-1));
+      const it = list[idx];
+      viewerImg.src = it.src;
+      viewerMeta.textContent = buildMetaText(it);
+      resetViewerTransform();
+      viewer.style.display='block'; viewer.setAttribute('aria-hidden','false');
+    }
+    function closeViewer(){ if (viewer){ viewer.style.display='none'; viewer.setAttribute('aria-hidden','true'); } }
+
+    // UI結線
+    infoBtn?.addEventListener('click', openModal);
+    galleryBackdrop?.addEventListener('click', closeModal);
+    galleryCloseBtn?.addEventListener('click', closeModal);
+
+    viewerClose && (viewerClose.onclick = () => closeViewer());
+    viewerPrev && (viewerPrev.onclick  = () => { if (idx>0) openViewer(idx-1); });
+    viewerNext && (viewerNext.onclick  = () => { if (idx<list.length-1) openViewer(idx+1); });
+    window.addEventListener('keydown', (e) => {
+      if (!viewer || viewer.getAttribute('aria-hidden')==='true') return;
+      if (e.key==='Escape') closeViewer();
+      if (e.key==='ArrowLeft') viewerPrev?.click();
+      if (e.key==='ArrowRight') viewerNext?.click();
+    });
+    viewerShare && (viewerShare.onclick = async () => {
+      try {
+        const it = list[idx]; const blob = await fetch(it.src).then(r=>r.blob());
+        const file = new File([blob], `Kokoro_${it.ts||Date.now()}.jpg`, {type:'image/jpeg'});
+        if (navigator.share && navigator.canShare?.({files:[file]})) await navigator.share({ files:[file], title: 'アルバム写真' });
+        else { const a=document.createElement('a'); a.href=it.src; a.download=file.name; a.click(); }
+      } catch { alert('共有に失敗しました'); }
+    });
+    viewerDelete && (viewerDelete.onclick = () => {
+      if (!confirm('この写真を削除しますか？')) return;
+      if (idx<0) return;
+      list.splice(idx,1); save(); renderGrid();
+      if (!list.length) closeViewer(); else openViewer(Math.min(idx, list.length-1));
+    });
+    viewerWrap && viewerWrap.addEventListener('touchstart', e => {
+      if (e.touches.length===2){ const [a,b]=e.touches; vLastPinch=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY); }
+      else if (e.touches.length===1){ vPan=true; vLX=e.touches[0].clientX; vLY=e.touches[0].clientY; }
+    }, {passive:true});
+    viewerWrap && viewerWrap.addEventListener('touchmove', e => {
+      if (e.touches.length===2 && vLastPinch){
+        const [a,b]=e.touches; const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+        vScale=Math.min(4, Math.max(1, vScale+(d-vLastPinch)*0.005)); vLastPinch=d; applyViewerTransform();
+      } else if (e.touches.length===1 && vPan){
+        const x=e.touches[0].clientX, y=e.touches[0].clientY; vX+=x-vLX; vY+=y-vLY; vLX=x; vLY=y; applyViewerTransform();
+      }
+    }, {passive:true});
+    viewerWrap && viewerWrap.addEventListener('touchend', e => {
+      if (e.touches.length===0){
+        if (vScale===1 && Math.abs(vX)>60){ if (vX<0) viewerNext?.click(); else viewerPrev?.click(); }
+        vLastPinch=0; vPan=false; vX=0; vY=0; applyViewerTransform();
+      }
+    }, {passive:true});
+    viewerWrap && viewerWrap.addEventListener('touchstart', e => {
+      const now=performance.now();
+      if (now - vTapTime < 250 && e.touches.length===1){ if (vScale===1) { vScale=2; } else { resetViewerTransform(); return; } applyViewerTransform(); vTapTime=0; }
+      else vTapTime=now;
+    }, {passive:true});
+
+    return { add, load, openModal, closeModal, openViewer, list };
+  })();
+  // ====== ここまで：アルバム ======
+
   // ====== シャッター処理（1/BPMの擬似露光 + 1/f²の明暗を焼き込み） ======
   shutterBtn?.addEventListener('click', async () => {
     try {
@@ -441,83 +591,91 @@ function buildFilename({ fValue, bpm, when = new Date(), who = 'anon', room = 'r
       captureCanvas.height = Math.round(video.videoHeight * scale);
       const ctx = captureCanvas.getContext('2d', { willReadFrequently: false });
 
-      const sec = exposureTimeSec();  // 1/BPM 秒
+      const sec = (1 / Math.max(1, (lastMeasuredBpm || defaultBpm)));  // 1/BPM 秒
       const frameRate = 40;
       const frameCount = Math.max(1, Math.round(sec * frameRate));
       const fade = trailFadeFromBpm(lastMeasuredBpm || defaultBpm);
 
-ctx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
-for (let i = 0; i < frameCount; i++) {
-  // 残像フェード
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = `rgba(0,0,0,${fade})`;
-  ctx.fillRect(0, 0, captureCanvas.width, captureCanvas.height);
+      ctx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+      for (let i = 0; i < frameCount; i++) {
+        // 残像フェード
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = `rgba(0,0,0,${fade})`;
+        ctx.fillRect(0, 0, captureCanvas.width, captureCanvas.height);
 
-  // ★ 端末対応で分岐：見た目＝保存を一致させる
-// ★ 端末対応で分岐：見た目＝保存を一致させる（B＝どちらも非反転）
-if (CANVAS_FILTER_SUPPORTED) {
-  ctx.filter = buildFilterString(); // 例: brightness(...) contrast(...)
-  ctx.globalAlpha = 1;
-
-  if (currentFacing === 'user' && FORCE_UNMIRROR_FRONT) {
-    ctx.save();
-    ctx.translate(captureCanvas.width, 0);
-    ctx.scale(-1, 1);
-    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-    ctx.restore();
-  } else {
-    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-  }
-
-  ctx.filter = 'none';
-} else {
-  ctx.globalAlpha = 1;
-
-  if (currentFacing === 'user' && FORCE_UNMIRROR_FRONT) {
-    ctx.save();
-    ctx.translate(captureCanvas.width, 0);
-    ctx.scale(-1, 1);
-    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-    ctx.restore();
-  } else {
-    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-  }
-
-  applyBrightnessComposite(
-    ctx,
-    currentBrightness,
-    captureCanvas.width,
-    captureCanvas.height,
-    CONTRAST_GAIN
-  );
-}
-  
-  await sleep(1000 / frameRate);
-}
+        if (CANVAS_FILTER_SUPPORTED) {
+          ctx.filter = buildFilterString(); // brightness/contrast
+          ctx.globalAlpha = 1;
+          if (currentFacing === 'user' && FORCE_UNMIRROR_FRONT) {
+            ctx.save();
+            ctx.translate(captureCanvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+            ctx.restore();
+          } else {
+            ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+          }
+          ctx.filter = 'none';
+        } else {
+          ctx.globalAlpha = 1;
+          if (currentFacing === 'user' && FORCE_UNMIRROR_FRONT) {
+            ctx.save();
+            ctx.translate(captureCanvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+            ctx.restore();
+          } else {
+            ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+          }
+          applyBrightnessComposite(
+            ctx,
+            currentBrightness,
+            captureCanvas.width,
+            captureCanvas.height,
+            CONTRAST_GAIN
+          );
+        }
+        await sleep(1000 / frameRate);
+      }
       ctx.globalAlpha = 1;
 
-      // 共有・保存
+      // 位置（任意）
+      let lat=null, lon=null;
+      try {
+        const pos = await new Promise((res,rej)=>{
+          if(!navigator.geolocation) return rej(new Error('no geo'));
+          navigator.geolocation.getCurrentPosition(res,rej,{timeout:6000, enableHighAccuracy:true});
+        });
+        lat = pos.coords.latitude; lon = pos.coords.longitude;
+      } catch {}
+
+      // データURL（アルバム保存用）と Blob（共有/保存用）を両方用意
+      const dataUrl = captureCanvas.toDataURL('image/png', 1.0);
+
+      // アルバムへ即追加（永続化）
+      const item = {
+        src: dataUrl,
+        f: Number(selectedFValue),
+        bpm: lastMeasuredBpm || defaultBpm,
+        ts: Date.now(),
+        lat, lon,
+        facing: currentFacing
+      };
+      Album.add(item);
+
+      // ファイル名・共有 or ダウンロード
       const who  = (document.getElementById('participant-name')?.value || 'anon').trim() || 'anon';
       const room = (document.getElementById('room-code')?.value || 'room').trim() || 'room';
-      const filename = buildFilename({
-        fValue: selectedFValue,
-        bpm: (lastMeasuredBpm || null),
-        who, room,
-      });
-
+      const filename = buildFilename({ fValue: selectedFValue, bpm: (lastMeasuredBpm || null), who, room });
 
       const blob = await new Promise((resolve) => {
         if (captureCanvas.toBlob) {
           captureCanvas.toBlob(b => resolve(b), 'image/png', 1.0);
         } else {
-          const dataURL = captureCanvas.toDataURL('image/png');
-          fetch(dataURL).then(r => r.blob()).then(resolve);
+          fetch(dataUrl).then(r => r.blob()).then(resolve);
         }
       });
       if (!blob) throw new Error('blob 生成に失敗');
-
-      const objectURL = URL.createObjectURL(blob);
-      savedPhotos.push({ url: objectURL, filename });
 
       const file = new File([blob], filename, { type: 'image/png' });
       try {
@@ -525,12 +683,12 @@ if (CANVAS_FILTER_SUPPORTED) {
           await navigator.share({ files: [file], title: 'ココロカメラ', text: '今日の一枚' });
         } else {
           const a = document.createElement('a');
-          a.href = objectURL; a.download = filename;
+          a.href = dataUrl; a.download = filename;
           document.body.appendChild(a); a.click(); a.remove();
         }
       } catch {
         const a = document.createElement('a');
-        a.href = objectURL; a.download = filename;
+        a.href = dataUrl; a.download = filename;
         document.body.appendChild(a); a.click(); a.remove();
       }
 
@@ -540,114 +698,49 @@ if (CANVAS_FILTER_SUPPORTED) {
     }
   });
 
-  // ====== 情報ボタン：ギャラリーモーダル ======
-  const infoBtn = document.getElementById('camera-info-btn');
-  infoBtn?.addEventListener('click', showGalleryModal);
-
-  function showGalleryModal() {
-    const modal = document.getElementById('gallery-modal');
-    if (!modal) return;
-    const grid = modal.querySelector('#gallery-grid');
-    const closeBtn = modal.querySelector('#gallery-close-btn');
-
-    grid.innerHTML = savedPhotos.length
-      ? savedPhotos.map(p => `
-          <div class="cc-grid-item">
-            <img src="${p.url}" alt="${p.filename}" class="cc-grid-img" />
-            <p class="cc-grid-name">${p.filename}</p>
-            <div class="cc-grid-actions">
-              <a href="${p.url}" download="${p.filename}" class="cc-btn cc-btn--light">保存</a>
-              <button data-share="${p.url}" data-name="${p.filename}" class="cc-btn">共有</button>
-            </div>
-          </div>
-        `).join('')
-      : `<p class="cc-empty">まだ写真がありません。撮影してみましょう。</p>`;
-
-    modal.classList.remove('hidden');
-    modal.setAttribute('aria-hidden', 'false');
-
-    const backdrop = modal.querySelector('.cc-modal-backdrop');
-    const close = () => {
-      modal.classList.add('hidden');
-      modal.setAttribute('aria-hidden', 'true');
-    };
-    if (closeBtn) closeBtn.onclick = close;
-    if (backdrop) backdrop.onclick = close;
-
-    grid.onclick = async (e) => {
-      const btn = e.target.closest('button[data-share]');
-      if (!btn) return;
-      const url = btn.getAttribute('data-share');
-      const name = btn.getAttribute('data-name') || 'photo.png';
-      try {
-        const blob = await fetch(url).then(r => r.blob());
-        const file = new File([blob], name, { type: 'image/png' });
-        if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'ココロカメラ', text: name });
-        } else {
-          const a = document.createElement('a');
-          a.href = url; a.download = name;
-          document.body.appendChild(a); a.click(); a.remove();
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-  }
-
   // ====== 手動合成（filter非対応端末向け）：明るさ＆コントラスト近似 ======
-function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
-  // 明るさ：b<1 は黒で multiply、b>1 は白で screen
-  if (brightness < 1) {
-    const a = Math.max(0, Math.min(1, 1 - brightness));
-    if (a > 0) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.globalAlpha = a;
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
+  function applyBrightnessComposite(ctx, brightness, w, h, contrastGain = 1.0){
+    // 明るさ：b<1 は黒で multiply、b>1 は白で screen
+    if (brightness < 1) {
+      const a = Math.max(0, Math.min(1, 1 - brightness));
+      if (a > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.globalAlpha = a;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
+    } else if (brightness > 1) {
+      const a = Math.max(0, Math.min(1, 1 - (1/brightness)));
+      if (a > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = a;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
     }
-  } else if (brightness > 1) {
-    const a = Math.max(0, Math.min(1, 1 - (1/brightness)));
-    if (a > 0) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = a;
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
+    // コントラスト：overlay を薄く
+    if (Math.abs(contrastGain - 1.0) > 1e-3) {
+      const a = Math.min(0.5, (contrastGain - 1.0) * 0.6);
+      if (a > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'overlay';
+        ctx.globalAlpha = a;
+        ctx.fillStyle = 'rgb(127,127,127)';
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
     }
+    // 後始末
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
-
-  // コントラスト：overlay 相当を薄く（過度に強くしない）
-  if (Math.abs(contrastGain - 1.0) > 1e-3) {
-    const a = Math.min(0.5, (contrastGain - 1.0) * 0.6);
-    if (a > 0) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = a;
-      ctx.fillStyle = 'rgb(127,127,127)';
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
-    }
-  }
-
-  // 後始末
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
-}
 
   // ====== 初期表示 ======
+  Album.load();                 // ← 過去の写真を復元（新旧フォーマット対応）
+  // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
-
-
-
-
-
-
-
-
-
-
