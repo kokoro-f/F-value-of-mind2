@@ -159,8 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ====== F値→明暗 (強化版 1/f² + 共通フィルタ) ======
-  let selectedFValue = 32.0;
-  const MIN_F = 1.0, MAX_F = 32.0;
+let selectedFValue = 22.0;          // お好みで。初期Fはレンジ内ならOK
+const MIN_F = 2.0, MAX_F = 22.0;   // ★ここを 2–22 に
 
   const BRIGHT_MIN = 0.12;      // 暗側の下限
   const BRIGHT_MAX = 3.6;       // 明側の上限
@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // F値決定 → BPM計測へ
   document.getElementById('f-value-decide-btn')?.addEventListener('click', async () => {
-    const f = Math.round(parseFloat(apertureInput.value));
+    const f = clamp(Math.round(parseFloat(apertureInput.value)), MIN_F, MAX_F); // ★レンジ内に丸め
     selectedFValue = f;
     document.querySelector('.aperture-control')?.setAttribute('aria-valuenow', String(f));
     applyFnumberLight(f);
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const b = meta?.match(/([0-9]{2,3})\s*BPM/i);
       const la= meta?.match(/Lat:([\-0-9.]+)/i);
       const lo= meta?.match(/Lon:([\-0-9.]+)/i);
-      it.f = f ? Number(f[1]) : 32;
+      it.f = f ? Number(f[1]) : 22;
       it.bpm = b ? Number(b[1]) : null;
       it.lat = la ? Number(la[1]) : null;
       it.lon = lo ? Number(lo[1]) : null;
@@ -489,6 +489,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+      list = list.map(it => ({
+       ...it,
+       f: clamp(Number(it.f ?? MAX_F), MIN_F, MAX_F)
+      }));
       renderGrid();
     }
     function add(item){ list.unshift(item); renderGrid(); save(); }
@@ -744,3 +748,4 @@ document.addEventListener('DOMContentLoaded', () => {
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
