@@ -462,21 +462,23 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
     const KEY_NEW = 'kokoro_album';
     const KEY_OLD = 'fshutter_album'; // 旧形式互換
 
-    function buildMetaText(it){
-      const bpmStr = (it.bpm && it.bpm>=60 && it.bpm<=100) ? `${it.bpm} BPM` : `--- BPM`;
-      const locStr = (typeof it.lat==='number' && typeof it.lon==='number')
-        ? `Lat:${it.lat.toFixed(5)} Lon:${it.lon.toFixed(5)}` : '位置情報なし';
-      const tsStr = it.ts ? new Date(it.ts).toLocaleString('ja-JP') : '';
-      return `F${it.f}\n${bpmStr}\n${locStr}\n${tsStr}`;
-    }
-    function thumb(item, i){
-      const d = document.createElement('div'); d.className='cc-thumb'; d.dataset.index=String(i);
-      const im = document.createElement('img'); im.src=item.src; im.alt = item.filename||'photo';
-      const m = document.createElement('div'); m.className='meta'; m.textContent = buildMetaText(item);
-      d.appendChild(im); d.appendChild(m);
-      d.addEventListener('click', () => openViewer(i));
-      return d;
-    }
+function buildMetaText(it, i, total){
+  // 撮影順番号：古いほど小さい番号 → oldest=1, newest=total
+  const order = total - i;
+  const bpmStr = (typeof it.bpm === 'number' && it.bpm >= 0) ? `${it.bpm} BPM` : `--- BPM`;
+  return `#${order}　F${Math.round(it.f)}　${bpmStr}`;
+}
+
+function thumb(item, i){
+  const d = document.createElement('div'); d.className='cc-thumb'; d.dataset.index=String(i);
+  const im = document.createElement('img'); im.src=item.src; im.alt = item.filename||'photo';
+  const m = document.createElement('div'); m.className='meta'; 
+  m.textContent = buildMetaText(item, i, list.length); // ← ここ変更
+  d.appendChild(im); d.appendChild(m);
+  d.addEventListener('click', () => openViewer(i));
+  return d;
+}
+    
     function renderGrid(){
       if (!galleryGrid) return;
       galleryGrid.innerHTML = '';
@@ -545,19 +547,21 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
     function applyViewerTransform(){ if (viewerImg) viewerImg.style.transform = `translate(${vX}px, ${vY}px) scale(${vScale})`; }
     function resetViewerTransform(){ vScale=1; vX=0; vY=0; applyViewerTransform(); }
 
-    function openViewer(i){
-      if (!list.length) return;
-      if (!viewer || !viewerImg || !viewerMeta) {
-        // フォールバック：オーバーレイ未設置なら新規タブで表示
-        window.open(list[i].src, '_blank'); return;
-      }
-      idx = Math.max(0, Math.min(i, list.length-1));
-      const it = list[idx];
-      viewerImg.src = it.src;
-      viewerMeta.textContent = buildMetaText(it);
-      resetViewerTransform();
-      viewer.style.display='block'; viewer.setAttribute('aria-hidden','false');
-    }
+function openViewer(i){
+  if (!list.length) return;
+  if (!viewer || !viewerImg || !viewerMeta) { window.open(list[i].src, '_blank'); return; }
+  idx = Math.max(0, Math.min(i, list.length-1));
+  const it = list[idx];
+  viewerImg.src = it.src;
+
+  // メタ（#撮影順 / F / BPM のみ）
+  viewerMeta.textContent = buildMetaText(it, idx, list.length);  // ← ここ変更
+
+  resetViewerTransform();
+  viewer.style.display='block'; viewer.setAttribute('aria-hidden','false');
+
+}
+
     function closeViewer(){ if (viewer){ viewer.style.display='none'; viewer.setAttribute('aria-hidden','true'); } }
 
     // UI結線
@@ -782,5 +786,6 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
