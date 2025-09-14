@@ -316,3 +316,11 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   .screen { transition: none; }
   button { transition: none; }
 }
+
+.app-container {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+#viewer-overlay[aria-hidden="true"] { display: none; }
+#viewer-overlay[aria-hidden="false"] { display: block; }
