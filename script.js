@@ -270,13 +270,6 @@ function setTargetFValue(nextF, opts = {}) {
   if (!smoothRafId) { lastTs = 0; smoothRafId = requestAnimationFrame(smoothLoop); }
 }
 
-  // 初動ブースト（指の小さな操作でも機敏に感じる）
-  const PREBOOST = 0.08;           // 0.12〜0.25で調整
-  displayFValue += (targetFValue - displayFValue) * PREBOOST;
-
-  if (!smoothRafId) { lastTs = 0; smoothRafId = requestAnimationFrame(smoothLoop); }
-}
-
 if (apertureControl && fValueDisplay && apertureInput) {
   updateApertureUI(selectedFValue);
 }
@@ -465,8 +458,10 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
   const bpmHud = document.getElementById('bpm-display-camera');
   function updateCameraHudBpm() {
     const bpm = lastMeasuredBpm || defaultBpm;
-    if (bpmHud) bpmHud.textContent = `BPM: ${bpm || '--'}`;
+    const ss = bpm ? (1 / bpm) : null; // 秒
+    if (bpmHud) bpmHud.textContent = `BPM: ${bpm || '--'} / SS: ${ss ? `1/${bpm}` : '--'}`;
   }
+
   updateCameraHudBpm();
 
   // 残像フェード（低BPM→長／高BPM→短）
@@ -886,6 +881,7 @@ function openViewer(i){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
