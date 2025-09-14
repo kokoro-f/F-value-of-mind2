@@ -427,7 +427,7 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
     const pad = (x) => x.toString().padStart(2, '0');
     const y = when.getFullYear(), m = pad(when.getMonth()+1), d = pad(when.getDate());
     const hh = pad(when.getHours()), mm = pad(when.getMinutes()), ss = pad(when.getSeconds());
-    const fStr = safeNum(Number(fValue).toFixed(1));
+    const fStr = String(Math.round(Number(fValue)));
     const bpmStr = (bpm == null || isNaN(bpm)) ? '--' : Math.round(bpm);
     return `cocoro_${y}-${m}-${d}_${hh}-${mm}-${ss}_${room}_${who}_F${fStr}_BPM${bpmStr}.png`;
   }
@@ -455,6 +455,38 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
   const viewerShare = document.getElementById('viewer-share');
   const viewerDelete = document.getElementById('viewer-delete');
   const viewerWrap = document.getElementById('viewer-img-wrap');
+  
+  // === メモUI（なければ自動生成） ===
+let viewerNote = document.getElementById('viewer-note');
+let viewerNoteSave = document.getElementById('viewer-note-save');
+
+(function ensureNoteUI(){
+  if (!viewer || !viewerMeta) return; // ビューア未設置なら何もしない
+
+  // textarea
+  if (!viewerNote) {
+    viewerNote = document.createElement('textarea');
+    viewerNote.id = 'viewer-note';
+    viewerNote.placeholder = 'この写真のメモ…';
+    viewerNote.autocomplete = 'off';
+    viewerNote.spellcheck = false;
+    viewerNote.style.cssText = 'width:100%;min-height:84px;margin-top:8px;padding:8px;resize:vertical;border-radius:8px;border:1px solid #ddd;';
+
+    // viewerMeta（情報テキスト）の直後に挿入
+    viewerMeta.insertAdjacentElement('afterend', viewerNote);
+  }
+
+  // 保存ボタン
+  if (!viewerNoteSave) {
+    viewerNoteSave = document.createElement('button');
+    viewerNoteSave.id = 'viewer-note-save';
+    viewerNoteSave.textContent = 'メモ保存';
+    viewerNoteSave.type = 'button';
+    viewerNoteSave.style.cssText = 'margin-top:6px;padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;';
+    viewerNote.insertAdjacentElement('afterend', viewerNoteSave);
+  }
+})();
+
 
   const Album = (() => {
     let list = [];   // 新しい順
@@ -484,13 +516,20 @@ function thumb(item, i){
       galleryGrid.innerHTML = '';
       list.forEach((it,i) => galleryGrid.appendChild(thumb(it,i)));
     }
-    function save(){
-      const out = list.map(it => ({
-        src: it.src, f: it.f, bpm: it.bpm, ts: it.ts,
-        lat: it.lat ?? null, lon: it.lon ?? null, facing: it.facing ?? 'environment'
-      }));
-      try { localStorage.setItem(KEY_NEW, JSON.stringify(out)); } catch(e){ console.warn('保存失敗', e); }
-    }
+function save(){
+  const out = list.map(it => ({
+    src: it.src,
+    f: it.f,
+    bpm: it.bpm,
+    ts: it.ts,
+    lat: it.lat ?? null,
+    lon: it.lon ?? null,
+    facing: it.facing ?? 'environment',
+    note: (typeof it.note === 'string' ? it.note : '') // ← 追加
+  }));
+  try { localStorage.setItem(KEY_NEW, JSON.stringify(out)); } catch(e){ console.warn('保存失敗', e); }
+}
+
     function parseOldMeta(meta){
       const it={};
       const f = meta?.match(/F\s*([0-9.]+)/i);
@@ -519,7 +558,7 @@ function thumb(item, i){
             const arr = JSON.parse(savedOld) || [];
             list = arr.map(row => {
               const p = parseOldMeta(row.meta||'');
-              return { src: row.src, f: p.f, bpm: p.bpm, ts: p.ts, lat:p.lat, lon:p.lon, facing:'environment' };
+              return { src: row.src, f: p.f, bpm: p.bpm, ts: p.ts, lat:p.lat, lon:p.lon, facing:'environment', note: '' };
             });
           } catch(e){ console.warn(e); }
         }
@@ -527,11 +566,16 @@ function thumb(item, i){
       list.sort((a,b)=>(b.ts||0)-(a.ts||0));
       list = list.map(it => ({
        ...it,
-       f: clamp(Number(it.f ?? MAX_F), MIN_F, MAX_F)
+       f: clamp(Number(it.f ?? MAX_F), MIN_F, MAX_F),
+       note: typeof it.note === 'string' ? it.note : '' 
       }));
       renderGrid();
     }
-    function add(item){ list.unshift(item); renderGrid(); save(); }
+    function add(item){
+  list.unshift({ ...item, note: item.note ?? '' }); // ← noteを補完
+  renderGrid();
+  save();
+}
     function openModal(){
       if (!galleryModal) return;
       galleryModal.classList.remove('hidden'); galleryModal.setAttribute('aria-hidden','false');
@@ -559,7 +603,7 @@ function openViewer(i){
 
   resetViewerTransform();
   viewer.style.display='block'; viewer.setAttribute('aria-hidden','false');
-
+  if (viewerNote) viewerNote.value = it.note || '';
 }
 
     function closeViewer(){ if (viewer){ viewer.style.display='none'; viewer.setAttribute('aria-hidden','true'); } }
@@ -786,6 +830,7 @@ function openViewer(i){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
