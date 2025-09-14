@@ -203,13 +203,50 @@ const MIN_F = 2.0, MAX_F = 22.0;   // ★ここを 2–22 に
   const fToSize = f => MIN_SIZE + ((MAX_F - f) / (MAX_F - MIN_F)) * (MAX_SIZE - MIN_SIZE);
   const sizeToF = size => MAX_F - ((size - MIN_SIZE) / (MAX_SIZE - MIN_SIZE)) * (MAX_F - MIN_F);
 
-  if (apertureControl && fValueDisplay && apertureInput) {
-    const initialSize = fToSize(selectedFValue);
-    apertureControl.style.width = apertureControl.style.height = `${initialSize}px`;
-    fValueDisplay.textContent = String(selectedFValue);
-    apertureInput.value = String(selectedFValue);
-    applyFnumberLight(selectedFValue);
+// ---- F値UIの一括更新（表示は整数、サイズは滑らかに追従）----
+function updateApertureUI(f) {
+  const clamped = clamp(Number(f), MIN_F, MAX_F);
+  // サイズは実数の displayFValue で“にゅるっ”と変化
+  const size = fToSize(clamped);
+  apertureControl.style.width = apertureControl.style.height = `${size}px`;
+
+  // 表示は整数で統一
+  const intF = Math.round(clamped);
+  fValueDisplay.textContent = String(intF);
+  apertureInput.value = String(intF);
+
+  // 明るさも追従（内部は連続値でもOK）
+  applyFnumberLight(clamped);
+}
+
+// ---- スムージング（表示値が目標値に追従） ----
+let displayFValue = selectedFValue;   // 実際に描画に使う値（連続）
+let targetFValue  = selectedFValue;   // 目標（整数に丸めて更新）
+let smoothRafId   = null;
+
+function smoothLoop() {
+  const k = 0.18; // 追従強度：0.12〜0.25で調整
+  displayFValue += (targetFValue - displayFValue) * k;
+
+  if (Math.abs(targetFValue - displayFValue) < 0.001) {
+    displayFValue = targetFValue;
+    smoothRafId = null; // ループ停止
+  } else {
+    smoothRafId = requestAnimationFrame(smoothLoop);
   }
+  updateApertureUI(displayFValue);
+}
+
+function setTargetFValue(nextF) {
+  // ここで整数に丸めてから目標値に設定（表示は常に整数）
+  const intF = Math.round(clamp(Number(nextF), MIN_F, MAX_F));
+  targetFValue = intF;
+  if (!smoothRafId) smoothLoop();
+}
+
+if (apertureControl && fValueDisplay && apertureInput) {
+  updateApertureUI(selectedFValue);
+}
 
   let lastDistance = null;
   const getDistance = (t1, t2) => Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
@@ -222,36 +259,33 @@ const MIN_F = 2.0, MAX_F = 22.0;   // ★ここを 2–22 に
     }
   }, { passive: false });
 
-  document.body.addEventListener('touchmove', e => {
-    if (!screens.fvalue?.classList.contains('active')) return;
-    if (e.touches.length === 2 && lastDistance) {
-      e.preventDefault();
-      const current = getDistance(e.touches[0], e.touches[1]);
-      const delta = current - lastDistance;
-      const newSize = Math.max(MIN_SIZE, Math.min(MAX_SIZE, apertureControl.offsetWidth + delta));
-      const newF = sizeToF(newSize);
-      const roundedF = Math.round(newF);
-      const snappedSize = fToSize(roundedF);
+document.body.addEventListener('touchmove', e => {
+  if (!screens.fvalue?.classList.contains('active')) return;
+  if (e.touches.length === 2 && lastDistance) {
+    e.preventDefault();
+    const current = getDistance(e.touches[0], e.touches[1]);
+    const delta = current - lastDistance;
 
-      apertureControl.style.width = apertureControl.style.height = `${snappedSize}px`;
-      fValueDisplay.textContent = String(roundedF);
-      apertureInput.value = String(roundedF);
+    // DOM幅を直接スナップせず、連続値 → 整数目標へ
+    const newSize = Math.max(MIN_SIZE, Math.min(MAX_SIZE, apertureControl.offsetWidth + delta));
+    const newF = sizeToF(newSize);    // ここは連続
+    setTargetFValue(newF);            // ← ここで整数に丸めて“目標値”に
 
-      applyFnumberLight(roundedF); // 即時反映
-      lastDistance = current;
-    }
-  }, { passive: false });
+    lastDistance = current;
+  }
+}, { passive: false });
+
   document.body.addEventListener('touchend', () => { lastDistance = null; });
 
-  // F値決定 → BPM計測へ
-  document.getElementById('f-value-decide-btn')?.addEventListener('click', async () => {
-    const f = clamp(Math.round(parseFloat(apertureInput.value)), MIN_F, MAX_F); // ★レンジ内に丸め
-    selectedFValue = f;
-    document.querySelector('.aperture-control')?.setAttribute('aria-valuenow', String(f));
-    applyFnumberLight(f);
-    showScreen('bpm');
-    await startBpmCamera();
-  });
+document.getElementById('f-value-decide-btn')?.addEventListener('click', async () => {
+  const raw = parseFloat(apertureInput.value);
+  const f = Math.round(clamp(raw, MIN_F, MAX_F));   // ← 整数に丸めて決定
+  selectedFValue = f;
+  document.querySelector('.aperture-control')?.setAttribute('aria-valuenow', String(f));
+  applyFnumberLight(f);
+  showScreen('bpm');
+  await startBpmCamera();
+});
 
   // ====== BPM 計測 ======
   const bpmVideo = document.getElementById('bpm-video');
@@ -748,4 +782,5 @@ const MIN_F = 2.0, MAX_F = 22.0;   // ★ここを 2–22 に
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
