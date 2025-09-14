@@ -1,4 +1,6 @@
-/* ベース */
+/* =========================
+   Base
+========================= */
 html, body {
   margin: 0;
   padding: 0;
@@ -15,11 +17,13 @@ body {
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  touch-action: none;          /* 全面アプリ挙動 */
+  touch-action: none;          /* 全面アプリ挙動（ピンチ等はJSで制御） */
   overscroll-behavior: none;
 }
 
-/* 端末サイズに合わせて自然にスケーリング */
+/* =========================
+   App container (端末比率に追従)
+========================= */
 .app-container {
   width: 100%;
   height: 100%;
@@ -30,8 +34,15 @@ body {
   overflow: hidden;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+
+  /* iOS安全領域 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* =========================
+   Screens
+========================= */
 .screen {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
@@ -46,6 +57,9 @@ h1 { font-size: 2.3rem; font-weight: 800; color: #333; margin: 0 0 10px; }
 h2 { font-size: 1.7rem; font-weight: 700; color: #444; margin: 0 0 10px; }
 p  { font-size: 1rem; color: #666; line-height: 1.6; margin: 0 0 8px; }
 
+/* =========================
+   Buttons
+========================= */
 button {
   padding: 14px 28px; font-size: 16px; font-weight: 700;
   border-radius: 999px; cursor: pointer;
@@ -70,18 +84,25 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   justify-content: center;
 }
 
-/* F値入力 */
+/* =========================
+   F値入力
+========================= */
 #screen-fvalue-input { display: flex; flex-direction: column; }
 .f-value-title-container { width: 100%; padding-top: 8px; }
-.aperture-control-container { display: flex; justify-content: center; align-items: center; flex: 1; width: 100%; }
+.aperture-control-container {
+  display: flex; justify-content: center; align-items: center; flex: 1; width: 100%;
+}
 .description-text-container { display: flex; flex-direction: column; align-items: center; padding-bottom: 12px; gap: 8px; }
 .f-value-title { font-size: 1.1rem; font-weight: 600; color: #555; }
 
+/* 円：重複定義を統合・高速化 */
 .aperture-control {
   position: relative;
   width: 200px;
   height: 200px;
-  transition: all .18s ease;
+  transition: width 90ms ease-out, height 90ms ease-out; /* 機敏に */
+  will-change: width, height, transform;
+  transform: translateZ(0); /* GPUヒント */
 }
 .aperture-ring {
   width: 100%;
@@ -99,7 +120,9 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   font-size: 2.3rem; font-weight: 800; color: #fff;
 }
 
-/* ── BPM計測 ───────────────────────── */
+/* =========================
+   BPM計測
+========================= */
 #screen-bpm { background: #fff; color: #222; }
 #screen-bpm h2 { color: #000; }
 .bpm-instruction { color: #444; }
@@ -131,31 +154,28 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 #bpm-status { color: #444; margin: 6px 0 12px; }
 
 .bpm-actions {
-  position: relative;        /* 子要素を絶対配置できるように */
+  position: relative;
   width: 100%;
   margin-top: 20px;
   display: flex;
   justify-content: center;   /* 計測開始ボタンを中央に */
   align-items: center;
 }
-
 /* 計測開始ボタン → 常に中央 */
-#bpm-start-btn {
-  margin: 0 auto;
-  z-index: 1;
-}
-
+#bpm-start-btn { margin: 0 auto; z-index: 1; }
 /* スキップボタン → 画面右端に固定 */
 #bpm-skip-btn {
   position: absolute;
-  right: 0;           /* 画面の右端に */
-  top: 50%;           /* 親の中央高さ */
+  right: 0;
+  top: 50%;
   transform: translateY(-50%);
   font-size: 14px;
   padding: 8px 14px;
 }
 
-/* カメラ画面 */
+/* =========================
+   Camera
+========================= */
 #screen-camera { background: #000; }
 #video {
   position: absolute; inset: 0; width: 100%; height: 100%;
@@ -163,11 +183,18 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 }
 #canvas { display: none; }
 
+/* もし preview-canvas を使うなら安全に敷く */
+#preview-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
 .camera-ui {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
   justify-content: space-between; align-items: center;
   padding: 16px; z-index: 2;
+
+  /* iOS安全領域 */
+  padding-top: calc(16px + env(safe-area-inset-top));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 .camera-ui-top {
   width: 100%; display: flex; justify-content: space-between; padding: 10px 12px;
@@ -175,7 +202,9 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   background: linear-gradient(to bottom, rgba(0,0,0,.45), transparent);
   border-radius: 10px;
 }
-.camera-ui-bottom { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 16px 10px; }
+.camera-ui-bottom {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 16px 10px;
+}
 #camera-shutter-btn {
   padding: 18px 36px; border: 3px solid #fff; background: rgba(255,255,255,.3); color: #fff;
   font-size: 1.1rem; font-weight: 800; backdrop-filter: blur(5px);
@@ -188,13 +217,10 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 #camera-gallery img { border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.25); transition: transform .15s; }
 #camera-gallery img:hover { transform: scale(1.05); }
 
-@media (prefers-color-scheme: dark) {
-  body { background: #0f0f12; }
-}
-
+/* =========================
+   Modal / Gallery
+========================= */
 .hidden { display: none !important; }
-
-/* === ギャラリーモーダル（既存HTMLに対応する最低限の見た目） === */
 .cc-modal.hidden[aria-hidden="true"] { display: none; }
 .cc-modal:not(.hidden)[aria-hidden="false"] { display: block; }
 .cc-modal { position: fixed; inset: 0; z-index: 5000; }
@@ -205,34 +231,88 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   border: 1px solid rgba(255,255,255,.2); overflow: hidden;
   display: flex; flex-direction: column;
 }
-.cc-modal-header { display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.15); }
+.cc-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.15);
+}
 #gallery-grid.cc-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr));
   gap: 8px; padding: 10px; overflow: auto; max-height: 60vh;
 }
-.cc-thumb { background:#111; border:1px solid rgba(255,255,255,.25); border-radius:8px;
-  padding:4px; cursor:pointer; display:flex; flex-direction:column; gap:4px; }
+.cc-thumb {
+  background:#111; border:1px solid rgba(255,255,255,.25); border-radius:8px;
+  padding:4px; cursor:pointer; display:flex; flex-direction:column; gap:4px;
+}
 .cc-thumb img { width:100%; height:auto; border-radius:4px; display:block; }
 .cc-thumb .meta { font-size:12px; line-height:1.2; white-space:pre-wrap; color:#ddd; }
 
-/* === 見返し（ライトボックス） === */
+/* =========================
+   Lightbox Viewer
+========================= */
 #viewer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 9999; }
 #viewer-img-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 #viewer-img { max-width: 100%; max-height: 100%; touch-action: none; will-change: transform; }
 
-#viewer-ui { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; }
-#viewer-meta { position: absolute; left: 12px; bottom: 12px; background: rgba(0,0,0,.5); border: 1px solid #fff; border-radius: 8px; padding: 8px 10px; font-size: 14px; white-space: pre-wrap; }
+#viewer-ui {
+  position: absolute; left: 0; right: 0; top: 0;
+  display: flex; justify-content: space-between; align-items: center; padding: 10px 12px;
+}
+#viewer-meta {
+  position: absolute; left: 12px; bottom: 12px;
+  background: rgba(0,0,0,.5); border: 1px solid #fff; border-radius: 8px;
+  padding: 8px 10px; font-size: 14px; white-space: pre-wrap;
+}
 
-.viewer-btn { background: rgba(255,255,255,.12); border: 1px solid #fff; color: #fff; padding: 10px 12px; border-radius: 10px; cursor: pointer; user-select: none; }
+.viewer-btn {
+  background: rgba(255,255,255,.12); border: 1px solid #fff; color: #fff;
+  padding: 10px 12px; border-radius: 10px; cursor: pointer; user-select: none;
+}
 #viewer-prev, #viewer-next { position: absolute; top: 50%; transform: translateY(-50%); }
 #viewer-prev { left: 10px; }
 #viewer-next { right: 10px; }
 
-.aperture-control {
-  transition: width 120ms ease-out, height 120ms ease-out;
-  will-change: width, height;
+/* === メモUI（JSで要素生成される想定） === */
+#viewer-note {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 64px;          /* メタ枠(#viewer-meta)の少し上 */
+  min-height: 84px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.35);
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.4;
+  backdrop-filter: blur(4px);
+}
+#viewer-note-save {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.6);
+  background: rgba(255,255,255,.1);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+#viewer-note-save:active { transform: translateY(1px); }
+
+/* =========================
+   Dark mode
+========================= */
+@media (prefers-color-scheme: dark) {
+  body { background: #0f0f12; }
 }
 
-
-
+/* =========================
+   Reduced motion
+========================= */
+@media (prefers-reduced-motion: reduce) {
+  .aperture-control { transition: none; }
+  .screen { transition: none; }
+  button { transition: none; }
+}
