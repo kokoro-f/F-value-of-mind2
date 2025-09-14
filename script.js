@@ -227,9 +227,9 @@ let smoothRafId   = null;
 let lastTs        = 0;
 
 // チューニング
-const STIFFNESS = 28;   // ばね強度（上げるほど初動が速い）
-const DAMPING   = 0.84; // 減衰（下げるほどキビキビ：0.80〜0.88）
-const MAX_VEL   = 120;  // 速度上限（暴れ防止）
+const STIFFNESS = 20;   // ばね強度（上げるほど初動が速い）
+const DAMPING   = 0.88; // 減衰（下げるほどキビキビ：0.80〜0.88）
+const MAX_VEL   = 80;  // 速度上限（暴れ防止）
 
 function smoothLoop(ts) {
   if (!lastTs) lastTs = ts;
@@ -261,7 +261,7 @@ function setTargetFValue(nextF) {
   targetFValue = intF;
 
   // 初動ブースト（指の小さな操作でも機敏に感じる）
-  const PREBOOST = 0.18;           // 0.12〜0.25で調整
+  const PREBOOST = 0.08;           // 0.12〜0.25で調整
   displayFValue += (targetFValue - displayFValue) * PREBOOST;
 
   if (!smoothRafId) { lastTs = 0; smoothRafId = requestAnimationFrame(smoothLoop); }
@@ -272,6 +272,12 @@ if (apertureControl && fValueDisplay && apertureInput) {
 }
 
 let lastPinchDistance = 0;
+let pinchEma = 0; // 入力の指数移動平均
+
+// 小さな誤差は0として扱う（ノイズ殺し）
+function applyDeadband(x, dead = 0.02) {
+  return (Math.abs(x) < dead) ? 0 : x;
+}
 
 document.addEventListener('touchstart', e => {
   if (!screens.fvalue?.classList.contains('active')) return;
@@ -281,7 +287,7 @@ document.addEventListener('touchstart', e => {
       e.touches[0].pageX - e.touches[1].pageX,
       e.touches[0].pageY - e.touches[1].pageY
     );
-    // どこでもピンチ可能に（ブラウザのズーム/スクロールを抑える）
+    pinchEma = 0; // リセット
     document.documentElement.style.touchAction = 'none';
   }
 }, { passive: false });
@@ -295,12 +301,32 @@ document.addEventListener('touchmove', e => {
       e.touches[0].pageX - e.touches[1].pageX,
       e.touches[0].pageY - e.touches[1].pageY
     );
-    const scale = dist / lastPinchDistance;  // >1: アウト, <1: イン
-    const pinchPower = Math.log2(scale);     // 小さな差でも効く
-    const SENS = 16;                         // 感度（8〜16で調整）
-    const nextTarget = targetFValue - pinchPower * SENS; // アウト→F↓→円大
 
-    setTargetFValue(nextTarget);   // ← 既存の関数（整数目標＆スムージングへ）
+    // スケール → 対数（微小変化を拾いつつ相対的）
+    let pinchPower = Math.log2(dist / lastPinchDistance);
+
+    // クランプ（1フレームぶんの最大寄与を制限）
+    pinchPower = Math.max(-0.20, Math.min(0.20, pinchPower)); // ±0.20以内
+
+    // デッドゾーン（±0.02未満は無視）
+    pinchPower = applyDeadband(pinchPower, 0.02);
+
+    // EMAで入力なめらか化（ノイズに強くなる）
+    // α=0.35 くらい：大きいほど追従性↑/滑らかさ↓
+    pinchEma = pinchEma * 0.65 + pinchPower * 0.35;
+
+    // 感度（ベース）— 以前より低め
+    const SENS_BASE = 10; // 16 → 10（8〜12で好み調整）
+
+    // 端の暴れ防止：レンジ端( MIN_F/MAX_F 付近 )では感度を下げる
+    const norm = (targetFValue - MIN_F) / (MAX_F - MIN_F); // 0..1
+    const edgeFactor = 0.7 + 0.6 * (1 - Math.abs(norm - 0.5) * 2); // 中央1.3 / 端0.7
+    const SENS = SENS_BASE * edgeFactor;
+
+    // ピンチアウト→F↓（円大）/ ピンチイン→F↑（円小）
+    const nextTarget = targetFValue - pinchEma * SENS;
+
+    setTargetFValue(nextTarget);
     lastPinchDistance = dist;
   }
 }, { passive: false });
@@ -309,7 +335,8 @@ document.addEventListener('touchend', e => {
   if (!screens.fvalue?.classList.contains('active')) return;
   if (e.touches.length < 2) {
     lastPinchDistance = 0;
-    document.documentElement.style.touchAction = ''; // 抑止を解除
+    pinchEma = 0;
+    document.documentElement.style.touchAction = ''; // 解除
   }
 }, { passive: false });
 
@@ -866,6 +893,7 @@ function openViewer(i){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
