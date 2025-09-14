@@ -229,5 +229,10 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 #viewer-prev { left: 10px; }
 #viewer-next { right: 10px; }
 
+.aperture-control {
+  transition: width 120ms ease-out, height 120ms ease-out;
+  will-change: width, height;
+}
+
 
 
