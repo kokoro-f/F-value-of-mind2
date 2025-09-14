@@ -219,46 +219,56 @@ function updateApertureUI(f) {
   applyFnumberLight(clamped);
 }
 
-// ---- スムージング（物理ベース：ばね）----
-let displayFValue = selectedFValue;   // 表示に使う値（連続）
-let targetFValue  = selectedFValue;   // 目標（整数化して持つ）
-let velocityF     = 0;                // 速度
+// ---- スムージング（余韻ナシ版）---------------------------------
+let displayFValue = selectedFValue;   // 表示に使う連続値
+let targetFValue  = selectedFValue;   // 目標（整数）
 let smoothRafId   = null;
 let lastTs        = 0;
+let isPinching    = false;            // ピンチ中フラグ（タッチリスナから参照）
 
-// チューニング
-const STIFFNESS = 20;   // ばね強度（上げるほど初動が速い）
-const DAMPING   = 0.88; // 減衰（下げるほどキビキビ：0.80〜0.88）
-const MAX_VEL   = 80;  // 速度上限（暴れ防止）
+const PINCH_FOLLOW = 0.5;   // ピンチ中の追従率（0.35〜0.6で調整）
+const EASE_SPEED   = 12;    // 指を離した後の短い収束速度（大きいほど速い）
 
 function smoothLoop(ts) {
   if (!lastTs) lastTs = ts;
-  const dt = Math.min(0.032, (ts - lastTs) / 1000); // 32msでキャップ
+  const dt = Math.min(0.032, (ts - lastTs) / 1000);
   lastTs = ts;
 
+  // 余韻を残さない：指数平滑で一気に寄せる（ばね物理は使わない）
   const delta = targetFValue - displayFValue;
-  velocityF += (STIFFNESS * delta - (1 - DAMPING) * velocityF) * dt;
+  displayFValue += delta * Math.min(1, EASE_SPEED * dt);
 
-  // 速度制限
-  if (velocityF >  MAX_VEL) velocityF =  MAX_VEL;
-  if (velocityF < -MAX_VEL) velocityF = -MAX_VEL;
-
-  displayFValue += velocityF * dt;
-
-  // 収束したら停止
-  if (Math.abs(delta) < 0.002 && Math.abs(velocityF) < 0.02) {
+  // 収束したら完全停止
+  if (Math.abs(delta) < 0.02) {
     displayFValue = targetFValue;
-    velocityF = 0;
     smoothRafId = null;
   } else {
     smoothRafId = requestAnimationFrame(smoothLoop);
   }
-  updateApertureUI(displayFValue); // ← 整数表示＆サイズ更新＆明るさ追従
+  updateApertureUI(displayFValue);
 }
 
-function setTargetFValue(nextF) {
-  const intF = Math.round(clamp(Number(nextF), MIN_F, MAX_F)); // 表示は常に整数へ
+function setTargetFValue(nextF, opts = {}) {
+  const intF = Math.round(clamp(Number(nextF), MIN_F, MAX_F));
   targetFValue = intF;
+
+  if (isPinching) {
+    // ピンチ中はその場追従（余韻なし）
+    displayFValue += (targetFValue - displayFValue) * PINCH_FOLLOW;
+    updateApertureUI(displayFValue);
+    return;
+  }
+
+  if (opts.immediate) {
+    // 即時反映が欲しい場面用
+    displayFValue = targetFValue;
+    updateApertureUI(displayFValue);
+    return;
+  }
+
+  // 指を離した直後：短いイーズだけかける（延々は回さない）
+  if (!smoothRafId) { lastTs = 0; smoothRafId = requestAnimationFrame(smoothLoop); }
+}
 
   // 初動ブースト（指の小さな操作でも機敏に感じる）
   const PREBOOST = 0.08;           // 0.12〜0.25で調整
@@ -272,22 +282,17 @@ if (apertureControl && fValueDisplay && apertureInput) {
 }
 
 let lastPinchDistance = 0;
-let pinchEma = 0; // 入力の指数移動平均
-
-// 小さな誤差は0として扱う（ノイズ殺し）
-function applyDeadband(x, dead = 0.02) {
-  return (Math.abs(x) < dead) ? 0 : x;
-}
 
 document.addEventListener('touchstart', e => {
   if (!screens.fvalue?.classList.contains('active')) return;
   if (e.touches.length === 2) {
     e.preventDefault();
+    isPinching = true;                           // ← 追加
+    if (smoothRafId) { cancelAnimationFrame(smoothRafId); smoothRafId = null; }
     lastPinchDistance = Math.hypot(
       e.touches[0].pageX - e.touches[1].pageX,
       e.touches[0].pageY - e.touches[1].pageY
     );
-    pinchEma = 0; // リセット
     document.documentElement.style.touchAction = 'none';
   }
 }, { passive: false });
@@ -301,32 +306,14 @@ document.addEventListener('touchmove', e => {
       e.touches[0].pageX - e.touches[1].pageX,
       e.touches[0].pageY - e.touches[1].pageY
     );
+    const scale = dist / lastPinchDistance;   // >1: アウト, <1: イン
+    const pinchPower = Math.log2(scale);
 
-    // スケール → 対数（微小変化を拾いつつ相対的）
-    let pinchPower = Math.log2(dist / lastPinchDistance);
+    // ★感度を控えめに（以前より小さめ）
+    const SENS = 10;                          // 9〜12がおすすめ
+    const nextTarget = targetFValue - pinchPower * SENS;
 
-    // クランプ（1フレームぶんの最大寄与を制限）
-    pinchPower = Math.max(-0.20, Math.min(0.20, pinchPower)); // ±0.20以内
-
-    // デッドゾーン（±0.02未満は無視）
-    pinchPower = applyDeadband(pinchPower, 0.02);
-
-    // EMAで入力なめらか化（ノイズに強くなる）
-    // α=0.35 くらい：大きいほど追従性↑/滑らかさ↓
-    pinchEma = pinchEma * 0.65 + pinchPower * 0.35;
-
-    // 感度（ベース）— 以前より低め
-    const SENS_BASE = 10; // 16 → 10（8〜12で好み調整）
-
-    // 端の暴れ防止：レンジ端( MIN_F/MAX_F 付近 )では感度を下げる
-    const norm = (targetFValue - MIN_F) / (MAX_F - MIN_F); // 0..1
-    const edgeFactor = 0.7 + 0.6 * (1 - Math.abs(norm - 0.5) * 2); // 中央1.3 / 端0.7
-    const SENS = SENS_BASE * edgeFactor;
-
-    // ピンチアウト→F↓（円大）/ ピンチイン→F↑（円小）
-    const nextTarget = targetFValue - pinchEma * SENS;
-
-    setTargetFValue(nextTarget);
+    setTargetFValue(nextTarget);              // ← ピンチ中は即追従で余韻ナシ
     lastPinchDistance = dist;
   }
 }, { passive: false });
@@ -335,8 +322,14 @@ document.addEventListener('touchend', e => {
   if (!screens.fvalue?.classList.contains('active')) return;
   if (e.touches.length < 2) {
     lastPinchDistance = 0;
-    pinchEma = 0;
-    document.documentElement.style.touchAction = ''; // 解除
+    isPinching = false;                       // ← 指を離した
+    document.documentElement.style.touchAction = '';
+
+    // ★スナップして完全停止（余韻なし）
+    targetFValue  = Math.round(displayFValue);
+    displayFValue = targetFValue;
+    updateApertureUI(displayFValue);
+    if (smoothRafId) { cancelAnimationFrame(smoothRafId); smoothRafId = null; }
   }
 }, { passive: false });
 
@@ -893,6 +886,7 @@ function openViewer(i){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
