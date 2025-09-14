@@ -458,10 +458,8 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
   const bpmHud = document.getElementById('bpm-display-camera');
   function updateCameraHudBpm() {
     const bpm = lastMeasuredBpm || defaultBpm;
-    const ss = bpm ? (1 / bpm) : null; // 秒
-    if (bpmHud) bpmHud.textContent = `BPM: ${bpm || '--'} / SS: ${ss ? `1/${bpm}` : '--'}`;
+    if (bpmHud) bpmHud.textContent = `BPM: ${bpm || '--'}`;
   }
-
   updateCameraHudBpm();
 
   // 残像フェード（低BPM→長／高BPM→短）
@@ -881,6 +879,7 @@ function openViewer(i){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
