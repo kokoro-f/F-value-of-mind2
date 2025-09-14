@@ -711,6 +711,12 @@ function openViewer(i){
 
     return { add, load, openModal, closeModal, openViewer, list };
   })();
+  viewerNoteSave?.addEventListener('click', () => {
+  if (idx < 0 || !Album.list[idx]) return;
+  Album.list[idx].note = viewerNote.value.trim();  // メモを更新
+  Album.save();                                    // localStorageに反映
+  alert('メモを保存しました');
+});
   // ====== ここまで：アルバム ======
 
   // ====== シャッター処理（1/BPMの擬似露光 + 1/f²の明暗を焼き込み） ======
@@ -879,6 +885,7 @@ function openViewer(i){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
