@@ -525,17 +525,16 @@ let viewerNoteSave = document.getElementById('viewer-note-save');
     viewerMeta.insertAdjacentElement('afterend', viewerNote);
   }
 
-  // 保存ボタン
-  if (!viewerNoteSave) {
-    viewerNoteSave = document.createElement('button');
-    viewerNoteSave.id = 'viewer-note-save';
-    viewerNoteSave.textContent = 'メモ保存';
-    viewerNoteSave.type = 'button';
-    viewerNoteSave.style.cssText = 'margin-top:6px;padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;';
-    viewerNote.insertAdjacentElement('afterend', viewerNoteSave);
-  }
+// 保存ボタン
+if (!viewerNoteSave) {
+  viewerNoteSave = document.createElement('button');
+  viewerNoteSave.id = 'viewer-note-save';
+  viewerNoteSave.textContent = '保存';
+  viewerNoteSave.type = 'button';
+  viewerNoteSave.className = 'floating-save-btn'; // ← CSS用クラスを付与
+  document.body.appendChild(viewerNoteSave); // ← body直下に配置（右下固定するため）
+}
 })();
-
 
   const Album = (() => {
     let list = [];   // 新しい順
@@ -885,6 +884,7 @@ function openViewer(i){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
