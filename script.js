@@ -219,25 +219,54 @@ function updateApertureUI(f) {
   applyFnumberLight(clamped);
 }
 
-// ---- スムージング（表示値が目標値に追従） ----
-let displayFValue = selectedFValue;   // 実際に描画に使う値（連続）
-let targetFValue  = selectedFValue;   // 目標（整数に丸めて更新）
+// ---- スムージング（物理ベース：ばね）----
+let displayFValue = selectedFValue;   // 表示に使う値（連続）
+let targetFValue  = selectedFValue;   // 目標（整数化して持つ）
+let velocityF     = 0;                // 速度
 let smoothRafId   = null;
+let lastTs        = 0;
 
-function smoothLoop() {
-  const k = 0.18; // 追従強度：0.12〜0.25で調整
-  displayFValue += (targetFValue - displayFValue) * k;
+// チューニング
+const STIFFNESS = 28;   // ばね強度（上げるほど初動が速い）
+const DAMPING   = 0.84; // 減衰（下げるほどキビキビ：0.80〜0.88）
+const MAX_VEL   = 120;  // 速度上限（暴れ防止）
 
-  if (Math.abs(targetFValue - displayFValue) < 0.001) {
+function smoothLoop(ts) {
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min(0.032, (ts - lastTs) / 1000); // 32msでキャップ
+  lastTs = ts;
+
+  const delta = targetFValue - displayFValue;
+  velocityF += (STIFFNESS * delta - (1 - DAMPING) * velocityF) * dt;
+
+  // 速度制限
+  if (velocityF >  MAX_VEL) velocityF =  MAX_VEL;
+  if (velocityF < -MAX_VEL) velocityF = -MAX_VEL;
+
+  displayFValue += velocityF * dt;
+
+  // 収束したら停止
+  if (Math.abs(delta) < 0.002 && Math.abs(velocityF) < 0.02) {
     displayFValue = targetFValue;
-    smoothRafId = null; // ループ停止
+    velocityF = 0;
+    smoothRafId = null;
   } else {
     smoothRafId = requestAnimationFrame(smoothLoop);
   }
-  updateApertureUI(displayFValue);
+  updateApertureUI(displayFValue); // ← 整数表示＆サイズ更新＆明るさ追従
 }
 
 function setTargetFValue(nextF) {
+  const intF = Math.round(clamp(Number(nextF), MIN_F, MAX_F)); // 表示は常に整数へ
+  targetFValue = intF;
+
+  // 初動ブースト（指の小さな操作でも機敏に感じる）
+  const PREBOOST = 0.18;           // 0.12〜0.25で調整
+  displayFValue += (targetFValue - displayFValue) * PREBOOST;
+
+  if (!smoothRafId) { lastTs = 0; smoothRafId = requestAnimationFrame(smoothLoop); }
+}
+
   // ここで整数に丸めてから目標値に設定（表示は常に整数）
   const intF = Math.round(clamp(Number(nextF), MIN_F, MAX_F));
   targetFValue = intF;
@@ -248,34 +277,47 @@ if (apertureControl && fValueDisplay && apertureInput) {
   updateApertureUI(selectedFValue);
 }
 
-  let lastDistance = null;
-  const getDistance = (t1, t2) => Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
+let lastPinchDistance = 0;
 
-  document.body.addEventListener('touchstart', e => {
-    if (!screens.fvalue?.classList.contains('active')) return;
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      lastDistance = getDistance(e.touches[0], e.touches[1]);
-    }
-  }, { passive: false });
-
-document.body.addEventListener('touchmove', e => {
+document.addEventListener('touchstart', e => {
   if (!screens.fvalue?.classList.contains('active')) return;
-  if (e.touches.length === 2 && lastDistance) {
+  if (e.touches.length === 2) {
     e.preventDefault();
-    const current = getDistance(e.touches[0], e.touches[1]);
-    const delta = current - lastDistance;
-
-    // DOM幅を直接スナップせず、連続値 → 整数目標へ
-    const newSize = Math.max(MIN_SIZE, Math.min(MAX_SIZE, apertureControl.offsetWidth + delta));
-    const newF = sizeToF(newSize);    // ここは連続
-    setTargetFValue(newF);            // ← ここで整数に丸めて“目標値”に
-
-    lastDistance = current;
+    lastPinchDistance = Math.hypot(
+      e.touches[0].pageX - e.touches[1].pageX,
+      e.touches[0].pageY - e.touches[1].pageY
+    );
+    // どこでもピンチ可能に（ブラウザのズーム/スクロールを抑える）
+    document.documentElement.style.touchAction = 'none';
   }
 }, { passive: false });
 
-  document.body.addEventListener('touchend', () => { lastDistance = null; });
+document.addEventListener('touchmove', e => {
+  if (!screens.fvalue?.classList.contains('active')) return;
+  if (e.touches.length === 2 && lastPinchDistance > 0) {
+    e.preventDefault();
+
+    const dist = Math.hypot(
+      e.touches[0].pageX - e.touches[1].pageX,
+      e.touches[0].pageY - e.touches[1].pageY
+    );
+    const scale = dist / lastPinchDistance;  // >1: アウト, <1: イン
+    const pinchPower = Math.log2(scale);     // 小さな差でも効く
+    const SENS = 16;                         // 感度（8〜16で調整）
+    const nextTarget = targetFValue - pinchPower * SENS; // アウト→F↓→円大
+
+    setTargetFValue(nextTarget);   // ← 既存の関数（整数目標＆スムージングへ）
+    lastPinchDistance = dist;
+  }
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  if (!screens.fvalue?.classList.contains('active')) return;
+  if (e.touches.length < 2) {
+    lastPinchDistance = 0;
+    document.documentElement.style.touchAction = ''; // 抑止を解除
+  }
+}, { passive: false });
 
 document.getElementById('f-value-decide-btn')?.addEventListener('click', async () => {
   const raw = parseFloat(apertureInput.value);
@@ -830,6 +872,7 @@ function openViewer(i){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
