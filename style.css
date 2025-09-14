@@ -324,3 +324,25 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 
 #viewer-overlay[aria-hidden="true"] { display: none; }
 #viewer-overlay[aria-hidden="false"] { display: block; }
+
+.floating-save-btn {
+  position: fixed;
+  bottom: 24px; 
+  right: 24px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  font-size: 16px;
+  font-weight: bold;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  cursor: pointer;
+  z-index: 1000; /* ギャラリーの上に出す */
+}
+
+.floating-save-btn:active {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transform: scale(0.96);
+}
