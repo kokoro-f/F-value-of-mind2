@@ -267,12 +267,6 @@ function setTargetFValue(nextF) {
   if (!smoothRafId) { lastTs = 0; smoothRafId = requestAnimationFrame(smoothLoop); }
 }
 
-  // ここで整数に丸めてから目標値に設定（表示は常に整数）
-  const intF = Math.round(clamp(Number(nextF), MIN_F, MAX_F));
-  targetFValue = intF;
-  if (!smoothRafId) smoothLoop();
-}
-
 if (apertureControl && fValueDisplay && apertureInput) {
   updateApertureUI(selectedFValue);
 }
@@ -872,6 +866,7 @@ function openViewer(i){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
