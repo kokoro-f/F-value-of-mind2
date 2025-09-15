@@ -68,15 +68,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const video = document.getElementById('video');
   const rawCanvas = document.getElementById('canvas');
 
-  // 表示用キャンバス（プレビュー）を重ねる
-  const previewCanvas = document.createElement('canvas');
-  const previewCtx = previewCanvas.getContext('2d');
-  if (screens.camera) {
-    Object.assign(previewCanvas.style, {
-      position: 'absolute', top: '0', left: '0', width: '100%', height: '100%', zIndex: '1'
-    });
-    screens.camera.insertBefore(previewCanvas, screens.camera.firstChild);
-  }
+const previewCanvas = document.createElement('canvas');
+previewCanvas.id = 'preview-canvas';           // ★これを追加
+const previewCtx = previewCanvas.getContext('2d');
+if (screens.camera) {
+  // CSSに任せるので style は最小限（z-indexはCSSに合わせ1でもOK）
+  previewCanvas.style.zIndex = '1';
+  screens.camera.insertBefore(previewCanvas, screens.camera.firstChild);
+}
 
   // ====== カメラ/プレビュー制御 ======
   const PREVIEW_FPS = 15;
@@ -519,7 +518,6 @@ let viewerNoteSave = document.getElementById('viewer-note-save');
     viewerNote.placeholder = 'この写真のメモ…';
     viewerNote.autocomplete = 'off';
     viewerNote.spellcheck = false;
-    viewerNote.style.cssText = 'width:100%;min-height:84px;margin-top:8px;padding:8px;resize:vertical;border-radius:8px;border:1px solid #ddd;';
     viewerMeta.insertAdjacentElement('afterend', viewerNote);
   }
 
@@ -529,19 +527,8 @@ let viewerNoteSave = document.getElementById('viewer-note-save');
     viewerNoteSave.id = 'viewer-note-save';
     viewerNoteSave.textContent = '保存';
     viewerNoteSave.type = 'button';
-    viewerNoteSave.className = 'floating-save-btn';
-    viewerNoteSave.style.display = 'none';     // 初期は非表示
-    viewerNoteSave.style.position = 'fixed';
-    viewerNoteSave.style.right = '16px';
-    viewerNoteSave.style.bottom = '16px';
-    viewerNoteSave.style.padding = '10px 14px';
-    viewerNoteSave.style.background = '#fff';
-    viewerNoteSave.style.border = '1px solid #ddd';
-    viewerNoteSave.style.borderRadius = '10px';
-    viewerNoteSave.style.fontWeight = '600';
-    viewerNoteSave.style.color = '#111';
-    viewerNoteSave.style.boxShadow = '0 4px 14px rgba(0,0,0,.1)';
-    viewerNoteSave.style.zIndex = '10000';
+    viewerNoteSave.className = 'floating-save-btn'; // 見た目はCSSに任せる
+    viewerNoteSave.style.display = 'none';          // 表示/非表示だけJSで制御
     document.body.appendChild(viewerNoteSave);
 
     // クリックでメモ保存
@@ -694,7 +681,7 @@ function openViewer(i){
 
   viewerMeta.textContent = buildMetaText(it, idx, list.length);
   resetViewerTransform();
-  viewer.style.display='block'; viewer.setAttribute('aria-hidden','false');
+  viewer.setAttribute('aria-hidden', 'false'); // 開く
 
   if (viewerNote) viewerNote.value = it.note || '';
   if (viewerNoteSave) viewerNoteSave.style.display = 'block'; // ← 追加（ボタンを表示）
@@ -702,7 +689,7 @@ function openViewer(i){
 
 function closeViewer(){
   if (viewer){
-    viewer.style.display='none'; viewer.setAttribute('aria-hidden','true');
+    viewer.setAttribute('aria-hidden', 'true');  // 閉じる
   }
   AlbumIdx.current = -1;                           // ← 追加
   if (viewerNoteSave) viewerNoteSave.style.display = 'none'; // ← 追加（ボタンを隠す）
@@ -930,16 +917,3 @@ function closeViewer(){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
