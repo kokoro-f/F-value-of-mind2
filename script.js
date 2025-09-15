@@ -849,7 +849,7 @@ viewerWrap && viewerWrap.addEventListener('touchstart', e => {
     try {
       if (!video.videoWidth) return;
 
-      const maxW = 1600;
+      const maxW = 1280;
       const scale = Math.min(1, maxW / video.videoWidth);
 
       const captureCanvas = rawCanvas || document.createElement('canvas');
@@ -921,7 +921,8 @@ let lat = null, lon = null;
 // ※ どうしても付けたい場合は別ボタンなど“ユーザー操作時”にだけ取得する
 
 // データURL（アルバム保存用）
-const dataUrl = captureCanvas.toDataURL('image/png', 1.0);
+const JPEG_QUALITY = 0.85;               // 0.8〜0.9くらいが実用
+const dataUrl = captureCanvas.toDataURL('image/jpeg', JPEG_QUALITY);
 
 // アルバムへ即追加（永続化）
 const item = {
@@ -985,6 +986,7 @@ Album.add(item);
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
