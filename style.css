@@ -272,51 +272,37 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   z-index: 1;
 }
 
-/* 上の波 */
+/* 上の波（1行の完全エンコード版） */
 #screen-bpm::before{
-  content: "";
-  position: absolute;
-  left: -6%;
-  right: -6%;
-  top: calc(-6px - env(safe-area-inset-top));   /* ノッチ考慮で少し上に逃がす */
+  content:"";
+  position:absolute;
+  left:-6%; right:-6%;
+  top: calc(-6px - env(safe-area-inset-top));
   height: var(--wave-height);
-  z-index: 0;
-  pointer-events: none;        /* クリック操作を邪魔しない */
-  background:
-    url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' width='420' height='120' viewBox='0 0 420 120'>\
-  <path d='M0,70 \
-           C35,10  70,110 105,70 \
-           S175,10 210,70 \
-           S280,110 315,70 \
-           S385,10  420,70' \
-        fill='none' stroke='%23E3007A' stroke-linecap='round' stroke-width='10'/>\
-</svg>") top center / var(--wave-tiles) 100% repeat-x;
+  z-index:0;
+  pointer-events:none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='120' viewBox='0 0 420 120'><path d='M0,70 C35,10 70,110 105,70 S175,10 210,70 S280,110 315,70 S385,10 420,70' fill='none' stroke='%23E3007A' stroke-linecap='round' stroke-width='10'/></svg>");
+  background-repeat: repeat-x;
+  background-size: var(--wave-tiles) 100%;
+  background-position: top center;
   -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
           mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
 }
 
-/* 下の波（上下反転してミラー） */
+/* 下の波（上下反転＋1行エンコード版） */
 #screen-bpm::after{
-  content: "";
-  position: absolute;
-  left: -6%;
-  right: -6%;
+  content:"";
+  position:absolute;
+  left:-6%; right:-6%;
   bottom: calc(-6px - env(safe-area-inset-bottom));
   height: var(--wave-height);
-  z-index: 0;
-  pointer-events: none;
-  transform: scaleY(-1);       /* 上と同じSVGを反転して使う */
-  background:
-    url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' width='420' height='120' viewBox='0 0 420 120'>\
-  <path d='M0,70 \
-           C35,10  70,110 105,70 \
-           S175,10 210,70 \
-           S280,110 315,70 \
-           S385,10  420,70' \
-        fill='none' stroke='%23E3007A' stroke-linecap='round' stroke-width='10'/>\
-</svg>") bottom center / var(--wave-tiles) 100% repeat-x;
+  z-index:0;
+  pointer-events:none;
+  transform: scaleY(-1); /* 反転で再利用 */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='120' viewBox='0 0 420 120'><path d='M0,70 C35,10 70,110 105,70 S175,10 210,70 S280,110 315,70 S385,10 420,70' fill='none' stroke='%23E3007A' stroke-linecap='round' stroke-width='10'/></svg>");
+  background-repeat: repeat-x;
+  background-size: var(--wave-tiles) 100%;
+  background-position: bottom center;
   -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
           mask-image: linear-gradient(to top, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
 }
@@ -504,6 +490,7 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 /* ARIAでの表示切替 */
 #viewer-overlay[aria-hidden="true"] { display: none; }
 #viewer-overlay[aria-hidden="false"] { display: block; }
+
 
 
 
