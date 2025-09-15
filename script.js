@@ -926,48 +926,19 @@ applyMotionBlurAfterCapture(
         lat = pos.coords.latitude; lon = pos.coords.longitude;
       } catch {}
 
-      // データURL（アルバム保存用）と Blob（共有/保存用）を両方用意
-      const dataUrl = captureCanvas.toDataURL('image/png', 1.0);
+// データURL（アルバム保存用）
+const dataUrl = captureCanvas.toDataURL('image/png', 1.0);
 
-      // アルバムへ即追加（永続化）
-      const item = {
-        src: dataUrl,
-        f: Number(selectedFValue),
-        bpm: lastMeasuredBpm || defaultBpm,
-        ts: Date.now(),
-        lat, lon,
-        facing: currentFacing
-      };
-      Album.add(item);
-
-      // ファイル名・共有 or ダウンロード
-      const who  = (document.getElementById('participant-name')?.value || 'anon').trim() || 'anon';
-      const room = (document.getElementById('room-code')?.value || 'room').trim() || 'room';
-      const filename = buildFilename({ fValue: selectedFValue, bpm: (lastMeasuredBpm || null), who, room });
-
-      const blob = await new Promise((resolve) => {
-        if (captureCanvas.toBlob) {
-          captureCanvas.toBlob(b => resolve(b), 'image/png', 1.0);
-        } else {
-          fetch(dataUrl).then(r => r.blob()).then(resolve);
-        }
-      });
-      if (!blob) throw new Error('blob 生成に失敗');
-
-      const file = new File([blob], filename, { type: 'image/png' });
-      try {
-        if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'ココロカメラ', text: '今日の一枚' });
-        } else {
-          const a = document.createElement('a');
-          a.href = dataUrl; a.download = filename;
-          document.body.appendChild(a); a.click(); a.remove();
-        }
-      } catch {
-        const a = document.createElement('a');
-        a.href = dataUrl; a.download = filename;
-        document.body.appendChild(a); a.click(); a.remove();
-      }
+// アルバムへ即追加（永続化）
+const item = {
+  src: dataUrl,
+  f: Number(selectedFValue),
+  bpm: lastMeasuredBpm || defaultBpm,
+  ts: Date.now(),
+  lat, lon,
+  facing: currentFacing
+};
+Album.add(item);
 
     } catch (err) {
       console.error('Capture error:', err);
@@ -1021,6 +992,7 @@ applyMotionBlurAfterCapture(
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
