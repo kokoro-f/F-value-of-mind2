@@ -180,6 +180,23 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
           mask-image: linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
 }
+#screen-fvalue-input::before{
+  content:"";
+  position:absolute;
+  left:-6%;
+  right:-6%;
+  top: calc(-20px - env(safe-area-inset-top)); /* ノッチ考慮して上に配置 */
+  height: clamp(140px, 22vh, 200px);
+  pointer-events:none;
+  z-index:0;
+
+  background:
+    radial-gradient(circle at 20px 20px, #2A9858 0 12px, transparent 13px) 0 0 / 48px 48px repeat,
+    radial-gradient(circle at 10px 24px, #ffffff 0 4px,  transparent 5px ) 0 0 / 48px 48px repeat;
+
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
+          mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
+}
 
 /* 画面下の“決定”などのボタンを自然に中央へ */
 #screen-fvalue-input button { justify-self: center; }
@@ -412,3 +429,4 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 /* ARIAでの表示切替 */
 #viewer-overlay[aria-hidden="true"] { display: none; }
 #viewer-overlay[aria-hidden="false"] { display: block; }
+
