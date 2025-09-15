@@ -175,27 +175,10 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   pointer-events:none;
   z-index:0;
   background:
-    radial-gradient(circle at 20px 20px, #2A9858 0 12px, transparent 13px) 0 0 / 48px 48px repeat,
-    radial-gradient(circle at 10px 24px, #ffffff 0 4px,  transparent 5px ) 0 0 / 48px 48px repeat;
+    radial-gradient(circle at 40px 40px, #2A9858 0 24px, transparent 25px) 0 0 / 88px 88px repeat,
+    radial-gradient(circle at 20px 60px, #ffffff 0 7px,  transparent 8px ) 0 0 / 88px 88px repeat;
   -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
           mask-image: linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
-}
-#screen-fvalue-input::before{
-  content:"";
-  position:absolute;
-  left:-6%;
-  right:-6%;
-  top: calc(-20px - env(safe-area-inset-top)); /* ノッチ考慮して上に配置 */
-  height: clamp(140px, 22vh, 200px);
-  pointer-events:none;
-  z-index:0;
-
-  background:
-    radial-gradient(circle at 20px 20px, #2A9858 0 12px, transparent 13px) 0 0 / 48px 48px repeat,
-    radial-gradient(circle at 10px 24px, #ffffff 0 4px,  transparent 5px ) 0 0 / 48px 48px repeat;
-
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
-          mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
 }
 
 /* 画面下の“決定”などのボタンを自然に中央へ */
@@ -252,81 +235,6 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   transform: translateY(-50%);
   font-size: 14px;
   padding: 8px 14px;
-}
-
-/* === BPM画面：波の背景（UIを邪魔しない固定装飾） === */
-:root{
-  --wave-color: #E3007A;       /* 参考画像のピンク。好みで変更OK */
-  --wave-stroke: 10;           /* 線の太さ(px) */
-  --wave-height: clamp(80px, 12vh, 140px); /* 波帯の高さ */
-  --wave-tiles: 420px;         /* 横方向のタイル幅（小さくすると密度UP） */
-}
-
-/* 背景レイヤーを置くための土台設定 */
-#screen-bpm{
-  position: relative;
-  overflow: hidden;            /* 波がはみ出しても隠す */
-}
-#screen-bpm > *{
-  position: relative;          /* UIは前面 */
-  z-index: 1;
-}
-
-/* 上の波 */
-#screen-bpm::before{
-  content: "";
-  position: absolute;
-  left: -6%;
-  right: -6%;
-  top: calc(-6px - env(safe-area-inset-top));   /* ノッチ考慮で少し上に逃がす */
-  height: var(--wave-height);
-  z-index: 0;
-  pointer-events: none;        /* クリック操作を邪魔しない */
-  background:
-    url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' width='420' height='120' viewBox='0 0 420 120'>\
-  <path d='M0,70 \
-           C35,10  70,110 105,70 \
-           S175,10 210,70 \
-           S280,110 315,70 \
-           S385,10  420,70' \
-        fill='none' stroke='%23E3007A' stroke-linecap='round' stroke-width='10'/>\
-</svg>") top center / var(--wave-tiles) 100% repeat-x;
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
-          mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
-}
-
-/* 下の波（上下反転してミラー） */
-#screen-bpm::after{
-  content: "";
-  position: absolute;
-  left: -6%;
-  right: -6%;
-  bottom: calc(-6px - env(safe-area-inset-bottom));
-  height: var(--wave-height);
-  z-index: 0;
-  pointer-events: none;
-  transform: scaleY(-1);       /* 上と同じSVGを反転して使う */
-  background:
-    url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' width='420' height='120' viewBox='0 0 420 120'>\
-  <path d='M0,70 \
-           C35,10  70,110 105,70 \
-           S175,10 210,70 \
-           S280,110 315,70 \
-           S385,10  420,70' \
-        fill='none' stroke='%23E3007A' stroke-linecap='round' stroke-width='10'/>\
-</svg>") bottom center / var(--wave-tiles) 100% repeat-x;
-  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
-          mask-image: linear-gradient(to top, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
-}
-
-/* ダークモードは少しだけ線を太く＆色をやや明るく */
-@media (prefers-color-scheme: dark){
-  :root{
-    --wave-color: #FF2C9A;
-    --wave-stroke: 12;
-  }
 }
 
 /* =========================
@@ -504,5 +412,3 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 /* ARIAでの表示切替 */
 #viewer-overlay[aria-hidden="true"] { display: none; }
 #viewer-overlay[aria-hidden="false"] { display: block; }
-
-
