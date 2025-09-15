@@ -246,7 +246,7 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 }
 #gallery-grid.cc-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr));
-  gap: 8px; padding: 10px; overflow: auto; max-height: 60vh;
+  gap: 8px; padding: 10px; overflow: auto; max-height: 60vh; -webkit-overflow-scrolling: touch;
 }
 .cc-thumb {
   background:#111; border:1px solid rgba(255,255,255,.25); border-radius:8px;
@@ -304,8 +304,8 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 /* 保存フローティングボタン（JSで生成/表示切替） */
 .floating-save-btn{
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: max(24px, env(safe-area-inset-right) + 12px);
+  bottom: max(24px, env(safe-area-inset-bottom) + 12px);
   padding: 10px 16px;           /* 可変幅 */
   min-width: 64px;
   height: 44px;                 /* タップしやすさ */
@@ -324,6 +324,8 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   transform: scale(0.96);
 }
+.floating-save-btn.is-visible { display: block; }
+
 .floating-save-btn:focus-visible {
   outline: 3px solid #5aa9ff;
   outline-offset: 2px;
@@ -348,3 +350,4 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 /* ARIAでの表示切替 */
 #viewer-overlay[aria-hidden="true"] { display: none; }
 #viewer-overlay[aria-hidden="false"] { display: block; }
+
