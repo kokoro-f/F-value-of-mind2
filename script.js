@@ -916,15 +916,9 @@ applyMotionBlurAfterCapture(
   (CANVAS_FILTER_SUPPORTED ? buildFilterString() : '')
 );
 
-      // 位置（任意）
-      let lat=null, lon=null;
-      try {
-        const pos = await new Promise((res,rej)=>{
-          if(!navigator.geolocation) return rej(new Error('no geo'));
-          navigator.geolocation.getCurrentPosition(res,rej,{timeout:6000, enableHighAccuracy:true});
-        });
-        lat = pos.coords.latitude; lon = pos.coords.longitude;
-      } catch {}
+// 位置（任意）— ポップアップ回避のため自動リクエストは行わない
+let lat = null, lon = null;
+// ※ どうしても付けたい場合は別ボタンなど“ユーザー操作時”にだけ取得する
 
 // データURL（アルバム保存用）
 const dataUrl = captureCanvas.toDataURL('image/png', 1.0);
@@ -992,6 +986,7 @@ Album.add(item);
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
