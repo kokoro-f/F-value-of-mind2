@@ -527,9 +527,9 @@ let viewerNoteSave = document.getElementById('viewer-note-save');
     viewerNoteSave.id = 'viewer-note-save';
     viewerNoteSave.textContent = '保存';
     viewerNoteSave.type = 'button';
-    viewerNoteSave.className = 'floating-save-btn'; // 見た目はCSSに任せる
-    viewerNoteSave.style.display = 'none';          // 表示/非表示だけJSで制御
+    viewerNoteSave.className = 'floating-save-btn'; // ここに is-visible は付けない
     document.body.appendChild(viewerNoteSave);
+
 
     // クリックでメモ保存
     viewerNoteSave.addEventListener('click', () => {
@@ -557,6 +557,10 @@ let viewerNoteSave = document.getElementById('viewer-note-save');
     });
   }
 })(); // ← IIFEはここで閉じます
+
+function showSaveBtn() { viewerNoteSave?.classList.add('is-visible'); }
+function hideSaveBtn() { viewerNoteSave?.classList.remove('is-visible'); }
+
   
   const AlbumIdx = { current: -1 };
 
@@ -652,99 +656,107 @@ function openModal(){
   if (!galleryModal) return;
   galleryModal.classList.remove('hidden');
   galleryModal.setAttribute('aria-hidden','false');
-  // モーダルを開いた直後はまだ拡大ビューではないので隠す
-  if (viewerNoteSave) viewerNoteSave.style.display = 'none';
+  hideSaveBtn();                 // ← ここだけに統一
 }
 
 function closeModal(){
   if (!galleryModal) return;
   galleryModal.classList.add('hidden');
   galleryModal.setAttribute('aria-hidden','true');
-  // モーダルを閉じたら保存ボタンを必ず消す＆インデックス初期化
-  if (viewerNoteSave) viewerNoteSave.style.display = 'none';
+  hideSaveBtn();                 // ← ここだけに統一
   AlbumIdx.current = -1;
 }
 
-    // ===== ライトボックス =====
-    // 変形・パン
-    let vScale=1, vX=0, vY=0, vLastPinch=0, vPan=false, vLX=0, vLY=0, vTapTime=0;
-    function applyViewerTransform(){ if (viewerImg) viewerImg.style.transform = `translate(${vX}px, ${vY}px) scale(${vScale})`; }
-    function resetViewerTransform(){ vScale=1; vX=0; vY=0; applyViewerTransform(); }
+// ===== ライトボックス =====
+// 変形・パン
+let vScale=1, vX=0, vY=0, vLastPinch=0, vPan=false, vLX=0, vLY=0, vTapTime=0;
+function applyViewerTransform(){ if (viewerImg) viewerImg.style.transform = `translate(${vX}px, ${vY}px) scale(${vScale})`; }
+function resetViewerTransform(){ vScale=1; vX=0; vY=0; applyViewerTransform(); }
 
 function openViewer(i){
   if (!list.length) return;
   if (!viewer || !viewerImg || !viewerMeta) { window.open(list[i].src, '_blank'); return; }
   idx = Math.max(0, Math.min(i, list.length-1));
-  AlbumIdx.current = idx;                        // ← 追加（共有インデックス更新）
+  AlbumIdx.current = idx;                        // 共有インデックス更新
   const it = list[idx];
   viewerImg.src = it.src;
 
   viewerMeta.textContent = buildMetaText(it, idx, list.length);
   resetViewerTransform();
-  viewer.setAttribute('aria-hidden', 'false'); // 開く
+  viewer.setAttribute('aria-hidden', 'false');   // 開く
 
   if (viewerNote) viewerNote.value = it.note || '';
-  if (viewerNoteSave) viewerNoteSave.style.display = 'block'; // ← 追加（ボタンを表示）
+  showSaveBtn();                                  // 拡大時だけ表示
 }
 
 function closeViewer(){
   if (viewer){
     viewer.setAttribute('aria-hidden', 'true');  // 閉じる
   }
-  AlbumIdx.current = -1;                           // ← 追加
-  if (viewerNoteSave) viewerNoteSave.style.display = 'none'; // ← 追加（ボタンを隠す）
+  AlbumIdx.current = -1;
+  hideSaveBtn();                                  // 必ず隠す
 }
-    // UI結線
-    infoBtn?.addEventListener('click', openModal);
-    galleryBackdrop?.addEventListener('click', closeModal);
-    galleryCloseBtn?.addEventListener('click', closeModal);
 
-    viewerClose && (viewerClose.onclick = () => closeViewer());
-    viewerPrev && (viewerPrev.onclick  = () => { if (idx>0) openViewer(idx-1); });
-    viewerNext && (viewerNext.onclick  = () => { if (idx<list.length-1) openViewer(idx+1); });
-    window.addEventListener('keydown', (e) => {
-      if (!viewer || viewer.getAttribute('aria-hidden')==='true') return;
-      if (e.key==='Escape') closeViewer();
-      if (e.key==='ArrowLeft') viewerPrev?.click();
-      if (e.key==='ArrowRight') viewerNext?.click();
-    });
-    viewerShare && (viewerShare.onclick = async () => {
-      try {
-        const it = list[idx]; const blob = await fetch(it.src).then(r=>r.blob());
-        const file = new File([blob], `Kokoro_${it.ts||Date.now()}.jpg`, {type:'image/jpeg'});
-        if (navigator.share && navigator.canShare?.({files:[file]})) await navigator.share({ files:[file], title: 'アルバム写真' });
-        else { const a=document.createElement('a'); a.href=it.src; a.download=file.name; a.click(); }
-      } catch { alert('共有に失敗しました'); }
-    });
-    viewerDelete && (viewerDelete.onclick = () => {
-      if (!confirm('この写真を削除しますか？')) return;
-      if (idx<0) return;
-      list.splice(idx,1); save(); renderGrid();
-      if (!list.length) closeViewer(); else openViewer(Math.min(idx, list.length-1));
-    });
-    viewerWrap && viewerWrap.addEventListener('touchstart', e => {
-      if (e.touches.length===2){ const [a,b]=e.touches; vLastPinch=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY); }
-      else if (e.touches.length===1){ vPan=true; vLX=e.touches[0].clientX; vLY=e.touches[0].clientY; }
-    }, {passive:true});
-    viewerWrap && viewerWrap.addEventListener('touchmove', e => {
-      if (e.touches.length===2 && vLastPinch){
-        const [a,b]=e.touches; const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
-        vScale=Math.min(4, Math.max(1, vScale+(d-vLastPinch)*0.005)); vLastPinch=d; applyViewerTransform();
-      } else if (e.touches.length===1 && vPan){
-        const x=e.touches[0].clientX, y=e.touches[0].clientY; vX+=x-vLX; vY+=y-vLY; vLX=x; vLY=y; applyViewerTransform();
-      }
-    }, {passive:true});
-    viewerWrap && viewerWrap.addEventListener('touchend', e => {
-      if (e.touches.length===0){
-        if (vScale===1 && Math.abs(vX)>60){ if (vX<0) viewerNext?.click(); else viewerPrev?.click(); }
-        vLastPinch=0; vPan=false; vX=0; vY=0; applyViewerTransform();
-      }
-    }, {passive:true});
-    viewerWrap && viewerWrap.addEventListener('touchstart', e => {
-      const now=performance.now();
-      if (now - vTapTime < 250 && e.touches.length===1){ if (vScale===1) { vScale=2; } else { resetViewerTransform(); return; } applyViewerTransform(); vTapTime=0; }
-      else vTapTime=now;
-    }, {passive:true});
+// UI結線
+infoBtn?.addEventListener('click', openModal);
+galleryBackdrop?.addEventListener('click', closeModal);
+galleryCloseBtn?.addEventListener('click', closeModal);
+
+viewerClose && (viewerClose.onclick = () => closeViewer());
+viewerPrev && (viewerPrev.onclick  = () => { if (idx>0) openViewer(idx-1); });
+viewerNext && (viewerNext.onclick  = () => { if (idx<list.length-1) openViewer(idx+1); });
+
+window.addEventListener('keydown', (e) => {
+  if (!viewer || viewer.getAttribute('aria-hidden')==='true') return;
+  if (e.key==='Escape') closeViewer();
+  if (e.key==='ArrowLeft') viewerPrev?.click();
+  if (e.key==='ArrowRight') viewerNext?.click();
+});
+
+viewerShare && (viewerShare.onclick = async () => {
+  try {
+    const it = list[idx]; const blob = await fetch(it.src).then(r=>r.blob());
+    const file = new File([blob], `Kokoro_${it.ts||Date.now()}.jpg`, {type:'image/jpeg'});
+    if (navigator.share && navigator.canShare?.({files:[file]})) await navigator.share({ files:[file], title: 'アルバム写真' });
+    else { const a=document.createElement('a'); a.href=it.src; a.download=file.name; a.click(); }
+  } catch { alert('共有に失敗しました'); }
+});
+
+viewerDelete && (viewerDelete.onclick = () => {
+  if (!confirm('この写真を削除しますか？')) return;
+  if (idx<0) return;
+  list.splice(idx,1); save(); renderGrid();
+  if (!list.length) closeViewer(); else openViewer(Math.min(idx, list.length-1));
+});
+
+viewerWrap && viewerWrap.addEventListener('touchstart', e => {
+  if (e.touches.length===2){ const [a,b]=e.touches; vLastPinch=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY); }
+  else if (e.touches.length===1){ vPan=true; vLX=e.touches[0].clientX; vLY=e.touches[0].clientY; }
+}, {passive:true});
+
+viewerWrap && viewerWrap.addEventListener('touchmove', e => {
+  if (e.touches.length===2 && vLastPinch){
+    const [a,b]=e.touches; const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+    vScale=Math.min(4, Math.max(1, vScale+(d-vLastPinch)*0.005)); vLastPinch=d; applyViewerTransform();
+  } else if (e.touches.length===1 && vPan){
+    const x=e.touches[0].clientX, y=e.touches[0].clientY; vX+=x-vLX; vY+=y-vLY; vLX=x; vLY=y; applyViewerTransform();
+  }
+}, {passive:true});
+
+viewerWrap && viewerWrap.addEventListener('touchend', e => {
+  if (e.touches.length===0){
+    if (vScale===1 && Math.abs(vX)>60){ if (vX<0) viewerNext?.click(); else viewerPrev?.click(); }
+    vLastPinch=0; vPan=false; vX=0; vY=0; applyViewerTransform();
+  }
+}, {passive:true});
+
+viewerWrap && viewerWrap.addEventListener('touchstart', e => {
+  const now=performance.now();
+  if (now - vTapTime < 250 && e.touches.length===1){
+    if (vScale===1) { vScale=2; } else { resetViewerTransform(); return; }
+    applyViewerTransform(); vTapTime=0;
+  } else vTapTime=now;
+}, {passive:true});
 
     return { add, load, openModal, closeModal, openViewer, list, save };
   })();
@@ -917,3 +929,4 @@ function closeViewer(){
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
