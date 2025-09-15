@@ -758,7 +758,15 @@ viewerWrap && viewerWrap.addEventListener('touchstart', e => {
   } else vTapTime=now;
 }, {passive:true});
 
-    return { add, load, openModal, closeModal, openViewer, list, save };
+    return {
+  add,
+  load,
+  openModal,
+  closeModal,
+  openViewer,
+  save,
+  get list() { return list; }   // ← これ！
+};
   })();
 
   // ====== ここまで：アルバム ======
@@ -929,4 +937,5 @@ viewerWrap && viewerWrap.addEventListener('touchstart', e => {
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
