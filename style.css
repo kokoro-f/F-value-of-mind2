@@ -35,9 +35,11 @@ body {
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 
-  /* iOS安全領域 */
+  /* iOS安全領域（上下左右） */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* =========================
@@ -183,8 +185,15 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 }
 #canvas { display: none; }
 
-/* もし preview-canvas を使うなら安全に敷く */
-#preview-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* プレビューキャンバス（ビデオの上、UIの下） */
+#preview-canvas{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;            /* .camera-ui(z-index:2) の下 */
+  pointer-events: none;  /* タップ/スワイプをブロックしない */
+}
 
 .camera-ui {
   position: absolute; inset: 0;
@@ -267,6 +276,10 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   background: rgba(255,255,255,.12); border: 1px solid #fff; color: #fff;
   padding: 10px 12px; border-radius: 10px; cursor: pointer; user-select: none;
 }
+.viewer-btn:focus-visible {
+  outline: 3px solid #5aa9ff;
+  outline-offset: 2px;
+}
 #viewer-prev, #viewer-next { position: absolute; top: 50%; transform: translateY(-50%); }
 #viewer-prev { left: 10px; }
 #viewer-next { right: 10px; }
@@ -287,19 +300,34 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   line-height: 1.4;
   backdrop-filter: blur(4px);
 }
-#viewer-note-save {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.6);
-  background: rgba(255,255,255,.1);
-  color: #fff;
+
+/* 保存フローティングボタン（JSで生成/表示切替） */
+.floating-save-btn{
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  padding: 10px 16px;           /* 可変幅 */
+  min-width: 64px;
+  height: 44px;                 /* タップしやすさ */
+  border-radius: 999px;         /* ピル型 */
+  background: #fff;
+  color: #000;
+  font-size: 15px;
   font-weight: 700;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   cursor: pointer;
+  z-index: 10050;               /* overlay(9999)より上 */
+  display: none;                /* 初期は非表示。JSで切替 */
 }
-#viewer-note-save:active { transform: translateY(1px); }
+.floating-save-btn:active {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transform: scale(0.96);
+}
+.floating-save-btn:focus-visible {
+  outline: 3px solid #5aa9ff;
+  outline-offset: 2px;
+}
 
 /* =========================
    Dark mode
@@ -317,32 +345,6 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   button { transition: none; }
 }
 
-.app-container {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-}
-
+/* ARIAでの表示切替 */
 #viewer-overlay[aria-hidden="true"] { display: none; }
 #viewer-overlay[aria-hidden="false"] { display: block; }
-
-.floating-save-btn {
-  position: fixed;
-  bottom: 24px; 
-  right: 24px;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: #fff;
-  color: #000;
-  font-size: 16px;
-  font-weight: bold;
-  border: 1px solid #ccc;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  cursor: pointer;
-  z-index: 1000; /* ギャラリーの上に出す */
-}
-
-.floating-save-btn:active {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  transform: scale(0.96);
-}
