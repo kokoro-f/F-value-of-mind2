@@ -929,7 +929,6 @@ const item = {
   f: Number(selectedFValue),
   bpm: lastMeasuredBpm || defaultBpm,
   ts: Date.now(),
-  lat, lon,
   facing: currentFacing
 };
 Album.add(item);
@@ -986,6 +985,7 @@ Album.add(item);
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
