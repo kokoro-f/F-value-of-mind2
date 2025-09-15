@@ -331,6 +331,7 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
   selectedFValue = f;
   document.querySelector('.aperture-control')?.setAttribute('aria-valuenow', String(f));
   applyFnumberLight(f);
+  updateCameraHudF();
   showScreen('bpm');
   await startBpmCamera();
 });
@@ -430,11 +431,11 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
         bpmStatus.textContent = T.bpmResult(clamped);
         setTimeout(async () => {
           showScreen('camera');
-          const fHud = document.getElementById('fvalue-display-camera');
-          if (fHud) fHud.textContent = `F: ${Math.round(parseFloat(apertureInput.value))}`;
+          updateCameraHudF();           // ★これで統一
           updateCameraHudBpm();
           await startCamera('environment');
         }, 800);
+
         stopBpmCamera();
       }
     };
@@ -448,6 +449,7 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
     lastMeasuredBpm = defaultBpm;
     stopBpmCamera();
     showScreen('camera');
+    updateCameraHudF();
     updateCameraHudBpm();
     await startCamera('environment');
   });
@@ -455,10 +457,17 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
   // ====== SS と HUD ======
   const shutterBtn = document.getElementById('camera-shutter-btn');
   const bpmHud = document.getElementById('bpm-display-camera');
+
+  function updateCameraHudF() {
+  const fHud = document.getElementById('fvalue-display-camera');
+  if (fHud) fHud.textContent = `F: ${Math.round(Number(selectedFValue))}`;
+  }
+  
   function updateCameraHudBpm() {
     const bpm = lastMeasuredBpm || defaultBpm;
     if (bpmHud) bpmHud.textContent = `BPM: ${bpm || '--'}`;
   }
+  updateCameraHudF();
   updateCameraHudBpm();
 
   // 残像フェード（低BPM→長／高BPM→短）
@@ -937,5 +946,6 @@ viewerWrap && viewerWrap.addEventListener('touchstart', e => {
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
