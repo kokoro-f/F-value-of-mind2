@@ -88,6 +88,19 @@ if (screens.camera) {
 
   function TRUE_BOOL_FIX(){ return true; }
 
+  // --- BPM→プレビューの blur(px) 非線形マッピング（60で強・100でゼロ） ---
+function bpmToBlurPx(bpm, min=60, max=100) {
+  const b = Math.max(min, Math.min(max, bpm || min));
+  const t = (max - b) / (max - min);           // 60→1, 100→0
+  return Math.round( t * 10 + (t*t) * 12 );    // 最大 ~22px
+}
+
+let currentPreviewBlurPx = 0;
+function applyPreviewBlur(bpm) {
+  currentPreviewBlurPx = bpmToBlurPx(bpm);
+  updatePreviewFilter();
+}
+
   function startPreviewLoop() {
     if (rafId) cancelAnimationFrame(rafId);
     const render = (ts) => {
@@ -151,6 +164,7 @@ if (screens.camera) {
       currentFacing = facingMode;
       video.style.display = 'none'; // videoは非表示、プレビューCanvasに描く
       startPreviewLoop();
+      updatePreviewFilter();
     } catch (err) {
       console.error('カメラエラー:', err);
       alert(T.cameraError);
@@ -178,15 +192,22 @@ const MIN_F = 2.0, MAX_F = 22.0;   // ★ここを 2–22 に
   function buildFilterString(){
     return `brightness(${currentBrightness}) contrast(${CONTRAST_GAIN})`;
   }
+  
+  // ②-A: プレビュー用スタイルフィルタ（明るさ/コントラスト + BPMブラー）
+function updatePreviewFilter(){
+  if (!previewCanvas) return;
+  if (CANVAS_FILTER_SUPPORTED) {
+    previewCanvas.style.filter =
+      `${buildFilterString()} blur(${currentPreviewBlurPx || 0}px)`;
+  } else {
+    // 手動合成モード時はCSSフィルタを使わない
+    previewCanvas.style.filter = 'none';
+  }
+}
+
   function applyFnumberLight(f){
-    currentBrightness = brightnessFromF(f);
-    if (previewCanvas) {
-      if (CANVAS_FILTER_SUPPORTED) {
-        previewCanvas.style.filter = buildFilterString();
-      } else {
-        previewCanvas.style.filter = 'none';
-      }
-    }
+   currentBrightness = brightnessFromF(f);
+   updatePreviewFilter(); // ← ここだけに集約
   }
 
   // ====== 画面遷移 ======
@@ -433,6 +454,9 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
           showScreen('camera');
           updateCameraHudF();           // ★これで統一
           updateCameraHudBpm();
+          applyPreviewBlur(lastMeasuredBpm);  
+
+          
           await startCamera('environment');
         }, 800);
 
@@ -451,6 +475,7 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
     showScreen('camera');
     updateCameraHudF();
     updateCameraHudBpm();
+    applyPreviewBlur(lastMeasuredBpm); 
     await startCamera('environment');
   });
 
@@ -477,6 +502,45 @@ document.getElementById('f-value-decide-btn')?.addEventListener('click', async (
     return clamp(0.06 + (0.20 - 0.06) * t, 0.04, 0.24);
   }
   const sleep = ms => new Promise(res => setTimeout(res, ms));
+  
+  // ⑤ 保存画像向け：方向性モーションブラー（少ないパスで派手＆軽量）
+function applyMotionBlurAfterCapture(ctx, video, w, h, bpm, facing, brightnessFilterCSS) {
+  const B = Math.max(60, Math.min(100, bpm || 60));
+  const t = (100 - B) / 40;              // 60→1, 100→0
+  const passes = 1 + Math.round(t * 6);  // 最大7パス
+  const maxOffset = Math.round((w + h) * 0.006 * (0.5 + t));
+
+  const angle = Math.random() * Math.PI * 2;
+  const dxUnit = Math.cos(angle);
+  const dyUnit = Math.sin(angle);
+
+  // Canvas filterが使えるなら、明るさ/コントラストも同時適用
+  const useCanvasFilter = CANVAS_FILTER_SUPPORTED && brightnessFilterCSS;
+  const prevFilter = ctx.filter;
+
+  ctx.globalAlpha = 1 / (passes + 1);
+  if (useCanvasFilter) ctx.filter = brightnessFilterCSS;
+
+  for (let i = 1; i <= passes; i++) {
+    const k = i / passes;
+    const offset = Math.round(maxOffset * (k * k));
+    const dx = Math.round(dxUnit * offset);
+    const dy = Math.round(dyUnit * offset);
+
+    if (facing === 'user' && FORCE_UNMIRROR_FRONT) {
+      ctx.save();
+      ctx.translate(w, 0); ctx.scale(-1, 1);
+      ctx.drawImage(video, dx, dy, w, h);
+      ctx.restore();
+    } else {
+      ctx.drawImage(video, dx, dy, w, h);
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  if (useCanvasFilter) ctx.filter = prevFilter || 'none';
+}
+
 
   // ====== ファイル名 ======
   function safeNum(n) { return String(n).replace('.', '-'); }
@@ -840,6 +904,17 @@ viewerWrap && viewerWrap.addEventListener('touchstart', e => {
         await sleep(1000 / frameRate);
       }
       ctx.globalAlpha = 1;
+      
+      // ⑤ 仕上げ：BPMに応じた方向性モーションブラーを軽く追加
+applyMotionBlurAfterCapture(
+  ctx,
+  video,
+  captureCanvas.width,
+  captureCanvas.height,
+  (lastMeasuredBpm || defaultBpm),
+  currentFacing,
+  (CANVAS_FILTER_SUPPORTED ? buildFilterString() : '')
+);
 
       // 位置（任意）
       let lat=null, lon=null;
@@ -946,6 +1021,7 @@ viewerWrap && viewerWrap.addEventListener('touchstart', e => {
   // ギャラリーを開くボタンは Album 側で結線済み
   showScreen('initial');
 });
+
 
 
 
