@@ -175,8 +175,8 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
   pointer-events:none;
   z-index:0;
   background:
-    radial-gradient(circle at 40px 40px, #2A9858 0 24px, transparent 25px) 0 0 / 88px 88px repeat,
-    radial-gradient(circle at 20px 60px, #ffffff 0 7px,  transparent 8px ) 0 0 / 88px 88px repeat;
+    radial-gradient(circle at 20px 20px, #2A9858 0 12px, transparent 13px) 0 0 / 48px 48px repeat,
+    radial-gradient(circle at 10px 24px, #ffffff 0 4px,  transparent 5px ) 0 0 / 48px 48px repeat;
   -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
           mask-image: linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
 }
@@ -429,4 +429,5 @@ button:focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
 /* ARIAでの表示切替 */
 #viewer-overlay[aria-hidden="true"] { display: none; }
 #viewer-overlay[aria-hidden="false"] { display: block; }
+
 
